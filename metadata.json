@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix kairo-clone",
+  "description": "Imported from GitHub: murilosilvadacosta5ano-dotcom/kairo-clone",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
