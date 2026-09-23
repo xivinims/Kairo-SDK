@@ -1,36 +1,75 @@
-# Kairo Clone
-
-Clone da interface do Claude (iOS) com chat real, perfil, instruções de sistema, RPG de história, fundo de foto e chaves de API.
-
-## O que tem
-
-- Tela inicial, menu lateral (☰) e configurações (MS)
-- Barra escura de resposta com o chip do personagem
-- **Perfil:** como a IA te chama, idade, gênero e descrição/força
-- **Instruções:** prompt de sistema + botão **História** para RPG
-- **História:** a IA segue o enredo; se o perfil for fraco, o personagem forte ganha
-- **API:** Grok, ChatGPT, Gemini, Groq, Claude e OpenRouter
-- Groq tem **Usar modelos free** (free tier)
-- **Fundo do chat:** foto da galeria no lugar do tema liso
-
-## Como usar
-
-1. Menu (três tracinhos) abre a barra do canto.
-2. **MS** abre as Configurações.
-3. Configurações → **Perfil:** nome, idade, gênero e descrição/força.
-4. Configurações → **Instruções:** prompt de sistema da IA. No final tem o botão **História**.
-5. Configurações → **API:** cole a chave (Grok, ChatGPT, Gemini, Groq…). Em Groq existe “Usar modelos free”. Toque em **Carregar modelos**.
-6. Configurações → **Fundo do chat:** escolha uma foto da galeria.
-
-A IA trata a descrição do perfil como verdade. Se você for fraco e tentar derrubar o personagem mais forte da história, ele luta e ganha.
-
-## Rodar localmente
-
-```bash
-npm install
-npm run dev
-```
-
-A chave de API fica só neste dispositivo (localStorage). Não commite chaves no Git.
-
-Opcional: `XAI_API_KEY` no ambiente para o provedor Grok funcionar sem colar a chave.
+# Kairo SDK
++
++Kairo SDK é um app de chat com IA, inspirado em interfaces premium, com suporte a perfis, instruções, RPG, histórias e múltiplos provedores de API.
++
++Este repositório agora também inclui a base do Kairo Agent Core: agente com habilidades, planejamento, verificação e política de conteúdo.
++
++## O que já existe
++
++- interface de chat inspirada em Claude
++- perfis de usuário e personagens
++- instruções globais + modo história
++- suporte a vários providers: Grok, OpenAI, Gemini, Groq, Claude, OpenRouter
++- modo RPG com acompanhamento de enredo
++
++## Nova base do Kairo Agent
++
++- `src/lib/kairo-agent.ts`
++- pensamento em duas etapas: execução + verificação
++- escolher skills automaticamente por contexto
++- controlo de conteúdo por nível: `safe`, `mature`, `adult`
++- bloqueio de conteúdo ilegal e exploração
++- integração com Gemini via API
++
++## Como usar
++
++```ts
++import { askKairoAgent } from "@/lib/kairo-agent";
++
++const result = await askKairoAgent({
++  message: "Crie uma história de fantasia sombria para um RPG com personagens fortes.",
++  ageVerified: true,
++  contentLevel: "mature",
++  allowAdultThemes: true,
++  allowExplicitSexualContent: false,
++  apiKey: process.env.GEMINI_API_KEY,
++});
++
++console.log(result.answer);
++console.log(result.skills);
++console.log(result.verification);
++```
++
++## Variáveis de ambiente
++
++```bash
++cp .env.example .env
++```
++
++Adicione sua chave Gemini:
++
++```env
++GEMINI_API_KEY=seu_token_aqui
++XAI_API_KEY=
++```
++
++## Executar localmente
++
++```bash
++npm install
++npm run dev
++```
++
++## Foco do projeto
++
++O objetivo do Kairo SDK agora é evoluir para um agente completo com:
++
++- memória por usuário e sessão
++- múltiplas skills especializadas
++- módulo de RPG e histórias
++- painel de agentes e automações
++- API do Kairo Agent para web, apps e integrações
++
++## Segurança
++
++O projeto respeita políticas de idade e conteúdo sensível. Conteúdo adulto só é permitido com maioridade confirmada e sem violar regras de exploração, abuso, menores ou coerção.
