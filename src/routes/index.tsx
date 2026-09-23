@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { KairoAgentApp } from "@/components/kairo-agent-app";
+import { KairoGate } from "@/components/kairo-gate";
 
 export const Route = createFileRoute("/")({
-  component: KairoAgentApp,
+  component: KairoGate,
 });

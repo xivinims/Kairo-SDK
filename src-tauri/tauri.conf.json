@@ -1,28 +1,17 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Kairo",
+  "productName": "Kairo App",
   "version": "0.1.0",
-  "identifier": "com.kairo.sdk",
+  "identifier": "com.kairo.app",
   "build": {
-    "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 8080",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:8080",
     "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
+    "frontendDist": "../dist/client"
   },
   "app": {
-    "windows": [{
-      "title": "Kairo",
-      "width": 1400,
-      "height": 900,
-      "resizable": true,
-      "fullscreen": false
-    }],
-    "security": {
-      "csp": null
-    }
+    "windows": [{ "label": "main", "title": "Kairo App", "width": 1400, "height": 900, "resizable": true, "fullscreen": false }],
+    "security": { "csp": null }
   },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": []
-  }
+  "bundle": { "active": true, "targets": "all", "icon": [] }
 }

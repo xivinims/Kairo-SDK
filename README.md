@@ -1,16 +1,14 @@
-# Kairo Agent
+# Kairo App
 
-Kairo Agent é o aplicativo de agente de IA deste repositório. A aplicação usa Gemini 2.5 Flash no servidor, com pesquisa web nativa e um registro único de skills.
+Kairo App é o aplicativo do agente de IA **Kairo**: chat com histórico, 23 skills ativadas automaticamente, pesquisa web nativa (Gemini 2.5 Flash no servidor) e tarefas agendadas.
 
 ## Configuração
-
-Crie um arquivo `.env` ou configure a variável no ambiente de deploy:
 
 ```env
 GEMINI_API_KEY=sua_chave
 ```
 
-A chave é usada somente no servidor; o navegador não recebe a credencial.
+A chave fica só no servidor; o navegador nunca a recebe.
 
 ## Desenvolvimento
 
@@ -19,27 +17,25 @@ npm install
 npm run dev
 ```
 
-## Build
+## Recursos
 
-```bash
-npm run build
-```
+- **Chat**: conversas salvas no navegador (localStorage).
+- **Skills**: ligue/desligue na aba Skills.
+- **Tarefas**: agende um pedido (uma vez, todo dia ou toda semana). As execuções rodam enquanto o app estiver aberto; para rodar com o app fechado é preciso um cron no servidor (ex.: Vercel Cron).
+- **Fontes**: títulos usam a fonte padrão; código e HTML usam Google Sans Code.
 
-## Desktop
-
-O projeto também mantém o shell Tauri 2 para distribuição desktop:
+## Desktop (Tauri 2)
 
 ```bash
 npm run desktop:dev
 npm run desktop:build
 ```
 
-## Arquitetura
+O `desktop:dev` abre o app apontando para `http://localhost:8080`.
 
-- `src/components/kairo-agent-app.tsx`: interface principal do Agent.
-- `src/lib/kairo-agent.ts`: execução server-side do agente e integração Gemini.
-- `src/lib/kairo-skills.ts`: registro único e detecção de skills.
-- `src/routes/`: única rota da aplicação.
-- `src-tauri/`: runtime desktop com acesso local restrito.
+## Estrutura
 
-O Agent não expõe chaves de API no cliente e não mantém os antigos provedores, bots, autenticação e fluxos de aplicativo como parte da execução principal.
+- `src/components/kairo-agent-app.tsx`: interface (chat, tarefas, skills).
+- `src/lib/kairo-agent.ts`: agente server-side e integração Gemini.
+- `src/lib/kairo-skills.ts`: registro de skills.
+- `src-tauri/`: shell desktop com acesso local restrito.
