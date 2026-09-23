@@ -1,4 +1,5 @@
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { ArrowUp, Bot, Globe2, Paperclip, Plus, Settings2, Sparkles, User } from "lucide-react";
 import { askKairoAgent, type KairoMessage } from "@/lib/kairo-agent";
 import { detectKairoSkills } from "@/lib/kairo-skills";
