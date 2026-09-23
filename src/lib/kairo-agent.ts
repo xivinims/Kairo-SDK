@@ -1,407 +1,138 @@
-export type KairoContentLevel = "safe" | "mature" | "adult";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { buildSkillInstructions, detectKairoSkills, type KairoSkillId } from "./kairo-skills";
 
-export type KairoSkill =
-  | "story"
-  | "rpg"
-  | "character"
-  | "worldbuilding"
-  | "code"
-  | "research"
-  | "general";
+export type KairoContentLevel = "safe" | "mature";
 
-export interface KairoAgentRequest {
-  message: string;
-  ageVerified?: boolean;
-  contentLevel?: KairoContentLevel;
-  allowAdultThemes?: boolean;
-  allowExplicitSexualContent?: boolean;
-  apiKey?: string;
-  sessionId?: string;
-  context?: string;
+export interface KairoMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface KairoAgentResult {
   ok: boolean;
   answer?: string;
-  skills: KairoSkill[];
-  plan: string[];
-  verification: string;
-  safety: string;
-  sessionId?: string;
+  skills: KairoSkillId[];
   error?: string;
 }
 
-export interface KairoSkillDefinition {
-  name: KairoSkill;
-  description: string;
-  category: "creative" | "game" | "technical" | "research" | "general";
-}
+const MessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(20000),
+});
 
-export const KAIRO_SKILLS: Record<KairoSkill, KairoSkillDefinition> = {
-  story: {
-    name: "story",
-    description: "Cria histórias, narrativas, enredos e cenas detalhadas.",
-    category: "creative",
-  },
-  rpg: {
-    name: "rpg",
-    description: "Atua como mestre de RPG com personagens, desafios e cenas interativas.",
-    category: "game",
-  },
-  character: {
-    name: "character",
-    description: "Cria perfis, personalidades, arcos e evolução de personagens.",
-    category: "creative",
-  },
-  worldbuilding: {
-    name: "worldbuilding",
-    description: "Constrói universos, regras, lore, ambientes e geografia.",
-    category: "creative",
-  },
-  code: {
-    name: "code",
-    description: "Gera, lê e corrige códigos e implementações técnicas.",
-    category: "technical",
-  },
-  research: {
-    name: "research",
-    description: "Busca, organiza e resume informações relevantes em contexto.",
-    category: "research",
-  },
-  general: {
-    name: "general",
-    description: "Respostas gerais, apoio direto e execução multimodal de tarefas.",
-    category: "general",
-  },
-};
+const RequestSchema = z.object({
+  messages: z.array(MessageSchema).min(1).max(32),
+  contentLevel: z.enum(["safe", "mature"]).default("safe"),
+});
 
 const BLOCKED_PATTERNS = [
-  "child sexual",
-  "sex with minors",
-  "minor sexual",
-  "underage sexual",
-  "nonconsensual sex",
-  "sexual exploitation",
-  "incest",
-  "bestiality",
-  "forced sex",
-  "rape",
+  /child\s+sexual/i,
+  /minor\s+sexual/i,
+  /sexual\s+exploitation/i,
+  /incest/i,
+  /bestiality/i,
+  /forced\s+sex/i,
+  /rape/i,
 ];
 
-const SAFE_KEYWORDS = [
-  "historia",
-  "história",
-  "story",
-  "rpg",
-  "mestre",
-  "campanha",
-  "personagem",
-  "npc",
-  "mundo",
-  "lore",
-  "fantasia",
-  "aventura",
-  "roteiro",
-  "codigo",
-  "código",
-  "programa",
-  "api",
-  "script",
-  "pesquisa",
-  "buscar",
-  "informação",
-  "dados",
-];
-
-function normalizeText(value: string) {
-  return value.trim();
+function validateMessages(messages: KairoMessage[]) {
+  const latest = messages[messages.length - 1]?.content ?? "";
+  if (!latest.trim()) return "Mensagem vazia.";
+  if (BLOCKED_PATTERNS.some((pattern) => pattern.test(latest))) {
+    return "Solicitação bloqueada por segurança.";
+  }
+  return null;
 }
 
-function detectSkills(message: string): KairoSkill[] {
-  const text = message.toLowerCase();
-  const detected: KairoSkill[] = [];
-
-  if (/(historia|história|story|enredo|narrativa|roteiro)/.test(text)) {
-    detected.push("story");
-  }
-
-  if (/(rpg|mestre|campanha|npc|aventura|duelo|personagem)/.test(text)) {
-    detected.push("rpg");
-  }
-
-  if (/(personagem|avatar|perfil|caracter|arco|biografia)/.test(text)) {
-    detected.push("character");
-  }
-
-  if (/(mundo|lore|universo|regras|geografia|fantasia|campanha)/.test(text)) {
-    detected.push("worldbuilding");
-  }
-
-  if (/(codigo|código|api|script|typescript|python|javascript|node|react|programa)/.test(text)) {
-    detected.push("code");
-  }
-
-  if (/(pesquisa|buscar|informação|dados|estudo|investig|pesquisas|notícia|noticia)/.test(text)) {
-    detected.push("research");
-  }
-
-  if (detected.length === 0) {
-    return ["general"];
-  }
-
-  const unique: KairoSkill[] = [];
-  for (const skill of detected) {
-    if (!unique.includes(skill)) unique.push(skill);
-  }
-  return unique;
-}
-
-function buildPlan(skills: KairoSkill[], message: string) {
-  const normalized = normalizeText(message);
-
+function buildSystemPrompt(latestMessage: string, contentLevel: KairoContentLevel) {
+  const skills = detectKairoSkills(latestMessage);
   return [
-    "Entender a intenção principal do usuário e o nível de conteúdo solicitado.",
-    `Selecionar as skills relevantes: ${skills.join(", ") || "general"}.`,
-    "Criar uma resposta rica, coerente e adaptada ao tom do usuário.",
-    "Verificar se o resultado atende ao objetivo, ao contexto e às regras de segurança.",
-    normalized.length > 220
-      ? "Manter consistência narrativa, identidade do personagem e contexto longo."
-      : "Responder com clareza, fluidez e profundidade sem lambança excessiva.",
-  ];
-}
-
-export function validateKairoRequest(request: KairoAgentRequest): { ok: true } | { ok: false; error: string } {
-  const message = normalizeText(request.message ?? "");
-
-  if (!message) {
-    return { ok: false, error: "Mensagem vazia." };
-  }
-
-  if (request.ageVerified !== true && (request.contentLevel === "mature" || request.contentLevel === "adult")) {
-    return { ok: false, error: "Idade não confirmada para conteúdo adulto ou maduro." };
-  }
-
-  if (!request.allowAdultThemes && request.contentLevel === "adult") {
-    return { ok: false, error: "Temas adultos estão desabilitados neste ambiente." };
-  }
-
-  if (!request.allowExplicitSexualContent && request.allowAdultThemes && request.contentLevel === "adult") {
-    return { ok: false, error: "Conteúdo sexual explícito não está permitido aqui." };
-  }
-
-  const lowered = message.toLowerCase();
-  if (BLOCKED_PATTERNS.some((pattern) => lowered.includes(pattern))) {
-    return { ok: false, error: "Solicitação bloqueada por política de conteúdo e segurança." };
-  }
-
-  return { ok: true };
-}
-
-function buildExecutionPrompt(request: KairoAgentRequest, skills: KairoSkill[]) {
-  const levelLabel = request.contentLevel ?? "mature";
-  const core = [
-    "Você é o Kairo Pro, um agente criativo e estratégico.",
-    "Responda em português brasileiro, com naturalidade, profundidade e personalidade.",
-    "Seu papel é ajudar com criação, RPG, narrativas, personagens, mundos, pesquisa e programação.",
-    `Skill principal: ${skills.join(", ") || "general"}.`,
-    `Nível de conteúdo: ${levelLabel}.`,
-    "Nunca gere conteúdo ilegal, exploração, violência sexual, abuso sexual, menores envolvidos em sexo, coerção ou abuso.",
-    "Se a solicitação chegar perto de um limite de segurança, reduza, reescreva ou recuse com elegância.",
-    "No conteúdo adulto permitido, mantenha foco em ficção consensual, intensidade emocional e fantasia sem desrespeito.",
-    "Se for história ou RPG, mantenha consistência de personagem, cenário, humor e conflito.",
-    "Se for código, entregue soluções úteis, tipadas e sem placeholders vazios.",
-    "Use a memória contextual do usuário quando ela estiver no contexto da conversa.",
-  ];
-
-  const contextBlock = request.context?.trim()
-    ? `Contexto do usuário:\n${request.context.trim()}\n\n`
-    : "";
-
-  return `${core.join("\n")}\n\n${contextBlock}Mensagem do usuário:\n${normalizeText(request.message)}`;
-}
-
-function buildVerificationPrompt(request: KairoAgentRequest, answer: string, skills: KairoSkill[]) {
-  const skillNames = skills.join(", ");
-  return [
-    "Você é o verificador do Kairo Pro.",
-    "Avalie se a resposta atende ao pedido do usuário, ao contexto e às regras de segurança.",
-    "Confirme: clareza, coesão, realismo, consistência, valor prático e ausência de conteúdo proibido.",
-    `Skills esperadas: ${skillNames}.`,
-    "Se a resposta falhar em qualquer critério, reformule em um texto melhor e mais seguro.",
-    "Retorne apenas um resumo da validação em 3 a 6 frases, sem explicações excessivas.",
-    "\nResposta original:\n",
-    answer,
+    "Você é Kairo Agent, um agente de IA geral, técnico e criativo.",
+    "Responda em português brasileiro quando o usuário falar português; acompanhe o idioma usado pelo usuário.",
+    "Vá direto ao ponto, sem preâmbulos vazios e sem fingir que executou ações que não executou.",
+    "Para programação, entregue soluções completas e práticas. Para pesquisa, diferencie fatos conhecidos de informações que precisam de verificação.",
+    "Quando houver uma tarefa complexa, organize mentalmente o trabalho antes de responder e faça uma checagem final de consistência. Não exponha raciocínio interno privado.",
+    "Não invente fontes, links, arquivos, resultados de ferramentas ou ações no computador.",
+    `Nível de conteúdo: ${contentLevel}. Não produza conteúdo sexual envolvendo menores, exploração sexual, coerção sexual ou bestialidade.`,
+    `Skills ativas: ${skills.join(", ")}.`,
+    buildSkillInstructions(latestMessage),
   ].join("\n");
 }
 
-async function generateWithGemini(apiKey: string, prompt: string): Promise<string> {
-  const key = apiKey.trim();
-  if (!key) {
-    throw new Error("missing-key");
+async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoContentLevel) {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) throw new Error("missing-key");
+
+  const latest = messages[messages.length - 1]?.content ?? "";
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: AbortSignal.timeout(45000),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: buildSystemPrompt(latest, contentLevel) }] },
+        contents: messages.map((message) => ({
+          role: message.role === "assistant" ? "model" : "user",
+          parts: [{ text: message.content }],
+        })),
+        tools: [{ googleSearch: {} }],
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.7, topP: 0.95 },
+      }),
+    },
+  );
+
+  if (!response.ok) throw new Error(`gemini-${response.status}`);
+
+  const body = (await response.json()) as {
+    candidates?: Array<{
+      finishReason?: string;
+      content?: { parts?: Array<{ text?: string }> };
+      groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> };
+    }>;
+  };
+  const candidate = body.candidates?.[0];
+  if (candidate?.finishReason === "SAFETY") {
+    return "Não posso atender a esse pedido dessa forma. Posso ajudar com uma versão segura da solicitação.";
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`;
+  const answer = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
+  if (!answer) throw new Error("empty");
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: prompt }],
-      },
-      contents: [{
-        parts: [{ text: "Atue de forma rica, precisa e alinhada ao objetivo e às regras de segurança." }],
-      }],
-      generationConfig: {
-        maxOutputTokens: 2200,
-        temperature: 0.9,
-        topP: 0.95,
-      },
-    }),
-    signal: AbortSignal.timeout(30000),
+  const sources = (candidate.groundingMetadata?.groundingChunks ?? [])
+    .map((chunk) => chunk.web?.uri && chunk.web.title ? `[${chunk.web.title}](${chunk.web.uri})` : null)
+    .filter((value): value is string => Boolean(value));
+
+  if (sources.length && /(pesquis|not[ií]cia|atual|fonte|hoje|agora)/i.test(latest)) {
+    const unique = [...new Set(sources)].slice(0, 5);
+    return `${answer}\n\n**Fontes**\n${unique.map((source) => `- ${source}`).join("\n")}`;
+  }
+  return answer;
+}
+
+export const askKairoAgent = createServerFn({ method: "POST" })
+  .validator(RequestSchema)
+  .handler(async ({ data }): Promise<KairoAgentResult> => {
+    const latest = data.messages[data.messages.length - 1]?.content ?? "";
+    const skills = detectKairoSkills(latest);
+    const validation = validateMessages(data.messages);
+    if (validation) return { ok: false, skills, error: validation };
+
+    try {
+      return { ok: true, answer: await generateWithGemini(data.messages, data.contentLevel), skills };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown";
+      return {
+        ok: false,
+        skills,
+        error: message === "missing-key"
+          ? "GEMINI_API_KEY não está configurada no ambiente do servidor."
+          : "Não foi possível executar o Kairo Agent agora.",
+      };
+    }
   });
 
-  if (!response.ok) {
-    throw new Error(`gemini ${response.status}`);
-  }
-
-  const payload = await response.json() as {
-    candidates?: {
-      content?: {
-        parts?: Array<{ text?: string }>;
-      };
-    }[];
-  };
-
-  const text = payload.candidates
-    ?.flatMap((candidate) => candidate.content?.parts ?? [])
-    .map((part) => part.text ?? "")
-    .join("")
-    .trim();
-
-  if (!text) {
-    throw new Error("empty");
-  }
-
-  return text;
-}
-
-export async function askKairoAgent(request: KairoAgentRequest): Promise<KairoAgentResult> {
-  const validation = validateKairoRequest(request);
-  if (!validation.ok) {
-    return {
-      ok: false,
-      skills: ["general"],
-      plan: ["Não foi possível iniciar a execução por segurança."],
-      verification: validation.error,
-      safety: validation.error,
-      sessionId: request.sessionId,
-      error: validation.error,
-    };
-  }
-
-  const skills = detectSkills(request.message);
-  const plan = buildPlan(skills, request.message);
-
-  const apiKey = request.apiKey?.trim() || (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY ?? "" : "");
-  if (!apiKey) {
-    return {
-      ok: false,
-      skills,
-      plan,
-      verification: "Chave da Gemini não encontrada.",
-      safety: "Falta de credencial de acesso ao modelo.",
-      sessionId: request.sessionId,
-      error: "missing-key",
-    };
-  }
-
-  const executionPrompt = buildExecutionPrompt(request, skills);
-
-  try {
-    const answer = await generateWithGemini(apiKey, executionPrompt);
-    const verified = await generateWithGemini(
-      apiKey,
-      buildVerificationPrompt(request, answer, skills),
-    );
-
-    return {
-      ok: true,
-      answer,
-      skills,
-      plan,
-      verification: verified,
-      safety: "Aprovado após validação de contexto, segurança e coerência.",
-      sessionId: request.sessionId,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "network";
-    return {
-      ok: false,
-      skills,
-      plan,
-      verification: "Falha ao executar o agente e verificar o resultado.",
-      safety: "Erro operacional durante geração ou validação.",
-      sessionId: request.sessionId,
-      error: message,
-    };
-  }
-}
-
-export function detectKairoSkills(message: string): KairoSkill[] {
-  return detectSkills(message);
-}
-
-export function getKairoSkillDescriptions(): Array<KairoSkillDefinition> {
-  return Object.values(KAIRO_SKILLS);
-}
-
-export function getKairoSkillByName(name: KairoSkill): KairoSkillDefinition | undefined {
-  return KAIRO_SKILLS[name];
-}
-
-export function isAdultContentAllowed(request: KairoAgentRequest): boolean {
-  return Boolean(request.allowAdultThemes || request.contentLevel === "adult") && Boolean(request.ageVerified);
-}
-
-export const KAIRO_SAFETY_HINT = "Conteúdo adulto permitido apenas com maioridade confirmada, sem exploração, menores, coerção ou material ilegal.";
-
-export const KAIRO_DEFAULT_TEXT = `Você é o Kairo Pro. Use suas skills para criar histórias, RPGs, personagens, mundos e apoio técnico com raciocínio em duas etapas: primeiro planejar, depois validar.`;
-
-export const KAIRO_ANCHOR = "Kairo Agent Core";
-
-export const SAFE_CONTENT_PROMPT = "Responder com segurança, clareza e criatividade, evitando qualquer conteúdo proibido ou abusivo.";
-
-export const KAIRO_HEALTH_CHECK = {
-  status: "online",
-  name: "Kairo Pro",
-  model: "gemini-2.5-flash",
-  policies: [
-    "idade obrigatória para conteúdo adulto",
-    "bloqueio de abuso sexual e menores",
-    "validação final com verificador",
-    "skills ativas por contexto",
-  ],
-};
-
-export function matchesAdultRequest(message: string) {
-  const q = message.toLowerCase();
-  return /(adult|mature|18\+|maior de idade|rpg adulto|história adulta|historia adulta|sensual|erótico|erotico)/i.test(q);
-}
-
-export function hasAllowedSafeTopic(message: string) {
-  const q = message.toLowerCase();
-  return SAFE_KEYWORDS.some((keyword) => q.includes(keyword));
-}
-
-export function getKairoSafetySummary(request: KairoAgentRequest) {
-  return {
-    contentLevel: request.contentLevel ?? "mature",
-    ageVerified: Boolean(request.ageVerified),
-    adultAllowed: Boolean(request.allowAdultThemes),
-    explicitAllowed: Boolean(request.allowExplicitSexualContent),
-    protected: true,
-  };
+export function getKairoSafetySummary() {
+  return { protected: true, model: "gemini-2.5-flash", nativeWebSearch: true, apiKeyClientExposure: false } as const;
 }
