@@ -88,10 +88,18 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
     .and_then(|name| name.to_str())
     .unwrap_or(&command);
 
-  // Only read-only development commands are exposed here. Arbitrary
-  // interpreters/package runners are intentionally excluded.
-  let allowed = ["git", "pwd", "ls"];
-  if !allowed.contains(&executable) {
+  // Only read-only inspection commands are exposed. Arbitrary interpreters,
+  // package runners and mutating git operations are intentionally excluded.
+  let allowed = match executable {
+    "pwd" => args.is_empty(),
+    "ls" => args.iter().all(|arg| !arg.starts_with('-') || matches!(arg.as_str(), "-a" | "-A" | "-l")),
+    "git" => matches!(
+      args.first().map(String::as_str),
+      Some("status") | Some("diff") | Some("log") | Some("show") | Some("branch") | Some("ls-files")
+    ),
+    _ => false,
+  };
+  if !allowed {
     return Err(format!("Command not allowed: {}", executable));
   }
 
