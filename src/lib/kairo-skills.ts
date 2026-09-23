@@ -1,17 +1,7 @@
 export type KairoSkillId =
-  | "story"
-  | "rpg"
-  | "character"
-  | "worldbuilding"
-  | "code"
-  | "research"
-  | "web"
-  | "video"
-  | "image"
-  | "design"
-  | "files"
-  | "memory"
-  | "general";
+  | "story" | "rpg" | "character" | "worldbuilding" | "code" | "research"
+  | "web" | "video" | "image" | "design" | "files" | "memory"
+  | "automation" | "documents" | "data" | "translation" | "summarize" | "general";
 
 export interface KairoSkillModule {
   id: KairoSkillId;
@@ -21,28 +11,43 @@ export interface KairoSkillModule {
   prompt: string;
 }
 
-export const KAIRO_SKILL_MODULES: KairoSkillModule[] = [
-  { id: "story", label: "Histórias", description: "Narrativas e roteiros", triggers: /hist[oó]ria|conto|roteiro|narrativa|enredo/i, prompt: "Preserve tom, personagens, continuidade e ritmo narrativo." },
-  { id: "rpg", label: "RPG", description: "Mestre, regras e campanhas", triggers: /rpg|mestre|campanha|npc|aventura|ficha/i, prompt: "Mantenha estado da campanha, regras, consequências e escolhas do jogador." },
-  { id: "character", label: "Personagens", description: "Personas e arcos", triggers: /personagem|avatar|persona|biografia|personalidade/i, prompt: "Crie personagens coerentes, com objetivos, limites e evolução." },
-  { id: "worldbuilding", label: "Mundos", description: "Lore e ambientação", triggers: /mundo|lore|universo|geografia|facção|fantasia/i, prompt: "Construa relações consistentes entre história, lugares, regras e culturas." },
-  { id: "code", label: "Código", description: "Programação e revisão", triggers: /c[oó]digo|programa|api|script|typescript|javascript|python|react|html|css/i, prompt: "Entregue código completo, seguro, tipado quando possível e separado por arquivo." },
-  { id: "research", label: "Pesquisa", description: "Busca e síntese", triggers: /pesquis|buscar|not[ií]cia|atual|refer[eê]ncia|fonte/i, prompt: "Separe fatos, inferências e fontes. Não invente links ou dados atuais." },
-  { id: "web", label: "Web", description: "Páginas e links", triggers: /site|p[aá]gina|landing|website|url|link/i, prompt: "Quando criar um site, entregue estrutura de arquivos e um artefato HTML visualizável." },
-  { id: "video", label: "Vídeo", description: "Referências em vídeo", triggers: /youtube|v[ií]deo|vimeo|tutorial|assistir/i, prompt: "Inclua links de vídeo reais somente quando fornecidos ou encontrados por busca." },
-  { id: "image", label: "Imagens", description: "Imagens e referências", triggers: /imagem|foto|png|jpg|visual|ilustra/i, prompt: "Descreva ou organize imagens sem alegar ter criado um arquivo se não houver ferramenta." },
-  { id: "design", label: "Design", description: "UI e liquid glass", triggers: /design|interface|ui|ux|glass|liquid|layout/i, prompt: "Use hierarquia visual, acessibilidade, responsividade e componentes reutilizáveis." },
-  { id: "files", label: "Arquivos", description: "Artefatos e biblioteca", triggers: /arquivo|documento|artefato|download|salvar|biblioteca/i, prompt: "Separe arquivos por nome, linguagem, tipo MIME e relação com a conversa." },
-  { id: "memory", label: "Memória", description: "Contexto persistente", triggers: /lembre|mem[oó]ria|prefer[eê]ncia|contexto|hist[oó]rico/i, prompt: "Use somente memórias relevantes e não invente dados pessoais." },
+const definitions: Array<[KairoSkillId, string, string, RegExp, string]> = [
+  ["story", "Histórias", "Narrativas, cenas e roteiros", /hist[oó]ria|conto|roteiro|narrativa|enredo/i, "Preserve tom, personagens, continuidade e ritmo."],
+  ["rpg", "RPG", "Mestre, regras e campanhas", /rpg|mestre|campanha|npc|aventura|ficha|duelo/i, "Mantenha estado, regras, consequências e escolhas."],
+  ["character", "Personagens", "Personas, perfis e arcos", /personagem|avatar|persona|biografia|personalidade|caracter/i, "Crie personagens coerentes com objetivos e evolução."],
+  ["worldbuilding", "Mundos", "Lore e ambientação", /mundo|lore|universo|geografia|fac[cç][aã]o|fantasia/i, "Conecte história, lugares, regras e culturas."],
+  ["code", "Código", "Programação e revisão", /c[oó]digo|programa|api|script|typescript|javascript|python|react|html|css|node/i, "Entregue código completo, seguro e organizado por arquivo."],
+  ["research", "Pesquisa", "Busca e síntese", /pesquis|buscar|not[ií]cia|atual|refer[eê]ncia|fonte|dados/i, "Diferencie fatos, inferências e fontes."],
+  ["web", "Web", "Sites e páginas", /site|p[aá]gina|landing|website|url|link/i, "Priorize estrutura, acessibilidade e responsividade."],
+  ["video", "Vídeo", "Vídeos e referências", /youtube|v[ií]deo|vimeo|tutorial|assistir/i, "Não invente vídeos ou links."],
+  ["image", "Imagens", "Imagens e referências visuais", /imagem|foto|png|jpg|visual|ilustra/i, "Descreva ou organize referências sem inventar arquivos."],
+  ["design", "Design", "UI, UX e interfaces", /design|interface|ui|ux|glass|liquid|layout/i, "Use hierarquia visual, acessibilidade e componentes reutilizáveis."],
+  ["files", "Arquivos", "Artefatos e documentos", /arquivo|documento|artefato|download|salvar|biblioteca/i, "Nomeie arquivos claramente e preserve relações entre eles."],
+  ["memory", "Memória", "Contexto e preferências", /lembre|mem[oó]ria|prefer[eê]ncia|contexto|hist[oó]rico/i, "Use somente contexto realmente disponível."],
+  ["automation", "Automação", "Workflows e tarefas", /automat|workflow|fluxo|rotina|agend/i, "Descreva etapas e confirme ações externas destrutivas."],
+  ["documents", "Documentos", "Relatórios e documentos", /documento|relat[oó]rio|pdf|curr[ií]culo|contrato/i, "Organize em seções claras e formato adequado."],
+  ["data", "Dados", "Tabelas e análise", /planilha|csv|tabela|gr[aá]fico|an[aá]lise de dados/i, "Explique premissas e limitações."],
+  ["translation", "Tradução", "Idiomas e localização", /traduz|tradu[cç][aã]o|ingl[eê]s|espanhol|localiza/i, "Preserve intenção, tom e formatação."],
+  ["summarize", "Resumo", "Síntese e extração", /resum|resuma|s[ií]ntese|pontos principais/i, "Separe fatos, decisões, pendências e próximos passos."],
 ];
 
-export function loadKairoSkills(message: string): KairoSkillModule[] {
-  const loaded = KAIRO_SKILL_MODULES.filter((skill) => skill.triggers.test(message));
-  return loaded.length > 0 ? loaded : [
-    { id: "general", label: "Kairo", description: "Assistente geral", triggers: /.*/i, prompt: "Responda diretamente e peça esclarecimentos apenas quando necessário." },
-  ];
+export const KAIRO_SKILLS: KairoSkillModule[] = definitions.map(
+  ([id, label, description, triggers, prompt]) => ({ id, label, description, triggers, prompt }),
+);
+
+export function detectKairoSkills(message: string): KairoSkillId[] {
+  const detected = KAIRO_SKILLS.filter((skill) => skill.triggers.test(message)).map((skill) => skill.id);
+  return detected.length ? detected : ["general"];
 }
 
-export function buildSkillInstructions(message: string) {
+export function loadKairoSkills(message: string): KairoSkillModule[] {
+  const detected = detectKairoSkills(message);
+  if (detected[0] === "general") {
+    return [{ id: "general", label: "Kairo", description: "Assistente geral", triggers: /.*/i, prompt: "Responda diretamente e com contexto." }];
+  }
+  return KAIRO_SKILLS.filter((skill) => detected.includes(skill.id));
+}
+
+export function buildSkillInstructions(message: string): string {
   return loadKairoSkills(message).map((skill) => `[${skill.label}] ${skill.prompt}`).join("\n");
 }
