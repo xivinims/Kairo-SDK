@@ -22,13 +22,19 @@ export function KairoAgentApp() {
     setDraft("");
     setError("");
     setSending(true);
-    const result = await askKairoAgent({ data: { messages: nextMessages, contentLevel } });
-    if (result.ok && result.answer) {
-      setMessages((current) => [...current, { role: "assistant", content: result.answer! }]);
-    } else {
-      setError(result.error ?? "O Kairo não conseguiu responder agora.");
+
+    try {
+      const result = await askKairoAgent({ data: { messages: nextMessages, contentLevel } });
+      if (result.ok && result.answer) {
+        setMessages((current) => [...current, { role: "assistant", content: result.answer! }]);
+      } else {
+        setError(result.error ?? "O Kairo não conseguiu responder agora.");
+      }
+    } catch {
+      setError("Não foi possível conectar ao Kairo Agent agora.");
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   }
 
   function newChat() {
