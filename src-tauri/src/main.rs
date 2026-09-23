@@ -81,6 +81,33 @@ fn write_file(path: String, content: String) -> Result<(), String> {
   fs::write(p, content).map_err(|e| e.to_string())
 }
 
+/// Flags that let a read-only git command write files, run programs or read
+/// outside the repository.
+const GIT_DENIED_FLAGS: [&str; 8] = [
+  "--output", "--ext-diff", "--textconv", "--no-index",
+  "--git-dir", "--work-tree", "--open-files-in-pager", "--exec-path",
+];
+
+fn git_args_allowed(args: &[String]) -> bool {
+  let Some(sub) = args.first().map(String::as_str) else { return false };
+  let rest = &args[1..];
+
+  let denied = rest.iter().any(|arg| {
+    arg.starts_with("-O")
+      || GIT_DENIED_FLAGS.iter().any(|flag| arg == flag || arg.starts_with(&format!("{}=", flag)))
+  });
+  if denied {
+    return false;
+  }
+
+  match sub {
+    "status" | "diff" | "log" | "show" | "ls-files" => true,
+    // `git branch <name>` and `-d/-D/-m` mutate the repository: list only.
+    "branch" => rest.iter().all(|arg| matches!(arg.as_str(), "--list" | "-a" | "-r" | "-v" | "-vv" | "--show-current")),
+    _ => false,
+  }
+}
+
 #[command]
 fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Result<String, String> {
   let executable = Path::new(&command)
@@ -93,10 +120,7 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
   let allowed = match executable {
     "pwd" => args.is_empty(),
     "ls" => args.iter().all(|arg| !arg.starts_with('-') || matches!(arg.as_str(), "-a" | "-A" | "-l")),
-    "git" => matches!(
-      args.first().map(String::as_str),
-      Some("status") | Some("diff") | Some("log") | Some("show") | Some("branch") | Some("ls-files")
-    ),
+    "git" => git_args_allowed(&args),
     _ => false,
   };
   if !allowed {
@@ -106,11 +130,25 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
   let cwd_path = Path::new(&cwd);
   require_allowed_path(cwd_path)?;
 
-  let output = std::process::Command::new(executable)
-    .args(&args)
-    .current_dir(cwd_path)
-    .output()
-    .map_err(|e| e.to_string())?;
+  let mut final_args: Vec<String> = Vec::new();
+  if executable == "git" {
+    final_args.push("--no-pager".to_string());
+    final_args.push(args[0].clone());
+    if matches!(args[0].as_str(), "diff" | "show" | "log") {
+      final_args.push("--no-ext-diff".to_string());
+      final_args.push("--no-textconv".to_string());
+    }
+    final_args.extend(args.iter().skip(1).cloned());
+  } else {
+    final_args = args.clone();
+  }
+
+  let mut cmd = std::process::Command::new(executable);
+  cmd.args(&final_args).current_dir(cwd_path);
+  if executable == "git" {
+    cmd.env_remove("GIT_EXTERNAL_DIFF").env_remove("GIT_PAGER");
+  }
+  let output = cmd.output().map_err(|e| e.to_string())?;
 
   let stdout = String::from_utf8_lossy(&output.stdout).to_string();
   let stderr = String::from_utf8_lossy(&output.stderr).to_string();
