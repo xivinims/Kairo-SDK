@@ -1,3 +1,5 @@
+import { Check, Clipboard, Download, ExternalLink } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const amp = String.fromCharCode(38);
@@ -9,15 +11,12 @@ const ENT: Record<string, string> = {
 };
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"]/g, (ch) => ENT[ch] ?? ch);
+  return s.replace(/[&<>\"]/g, (ch) => ENT[ch] ?? ch);
 }
 
 function inline(text: string) {
   let s = escapeHtml(text);
-  s = s.replace(
-    /`([^`]+)`/g,
-    '<code class="md-inline">$1</code>',
-  );
+  s = s.replace(/`([^`]+)`/g, '<code class="md-inline">$1</code>');
   s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
   s = s.replace(
@@ -56,16 +55,10 @@ function renderBlock(src: string) {
         i < lines.length &&
         (ordered ? /^\s*\d+\.\s+/.test(lines[i]) : /^\s*[-*]\s+/.test(lines[i]))
       ) {
-        items.push(
-          `<li>${inline(lines[i].replace(/^\s*(?:[-*]|\d+\.)\s+/, ""))}</li>`,
-        );
+        items.push(`<li>${inline(lines[i].replace(/^\s*(?:[-*]|\d+\.)\s+/, ""))}</li>`);
         i += 1;
       }
-      out.push(
-        ordered
-          ? `<ol class="md-ol">${items.join("")}</ol>`
-          : `<ul class="md-ul">${items.join("")}</ul>`,
-      );
+      out.push(ordered ? `<ol class="md-ol">${items.join("")}</ol>` : `<ul class="md-ul">${items.join("")}</ul>`);
       continue;
     }
     const para: string[] = [];
@@ -84,43 +77,73 @@ function renderBlock(src: string) {
   return out.join("");
 }
 
-export function Markdown({
-  text,
-  className,
-}: {
-  text: string;
-  className?: string;
-}) {
+function CodeBlock({ body, lang }: { body: string; lang: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await navigator.clipboard.writeText(body);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  function download() {
+    const extension = lang.toLowerCase() === "typescript" ? "ts" : lang.toLowerCase() || "txt";
+    const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `kairo-snippet.${extension}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function share() {
+    if (navigator.share) {
+      await navigator.share({ title: "Código criado pelo Kairo", text: body });
+    } else {
+      await copy();
+    }
+  }
+
+  return (
+    <div className="group relative my-3 overflow-hidden rounded-2xl border border-white/10 bg-black/35 shadow-inner shadow-black/20">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.045] px-3 py-2">
+        <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/45">{lang || "texto"}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => void copy()} className="code-action" title="Copiar código">
+            {copied ? <Check className="size-3.5 text-emerald-300" /> : <Clipboard className="size-3.5" />}
+            <span>{copied ? "copiado" : "copiar"}</span>
+          </button>
+          <button type="button" onClick={download} className="code-action" title="Baixar código">
+            <Download className="size-3.5" /><span>baixar</span>
+          </button>
+          <button type="button" onClick={() => void share()} className="code-action" title="Compartilhar código">
+            <ExternalLink className="size-3.5" /><span>compartilhar</span>
+          </button>
+        </div>
+      </div>
+      <pre className="md-pre !my-0 !rounded-none !border-0 !bg-transparent px-4 py-3"><code>{body}</code></pre>
+    </div>
+  );
+}
+
+export function Markdown({ text, className }: { text: string; className?: string }) {
   const parts: { type: "code" | "md"; lang?: string; body: string }[] = [];
-  const re = /```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g;
+  const re = /```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    if (m.index > last) {
-      parts.push({ type: "md", body: text.slice(last, m.index) });
-    }
-    parts.push({
-      type: "code",
-      lang: m[1] || "",
-      body: m[2].replace(/\n$/, ""),
-    });
+    if (m.index > last) parts.push({ type: "md", body: text.slice(last, m.index) });
+    parts.push({ type: "code", lang: m[1] || "", body: m[2].replace(/\n$/, "") });
     last = m.index + m[0].length;
   }
   if (last < text.length) parts.push({ type: "md", body: text.slice(last) });
 
   return (
     <div className={cn("md-body", className)}>
-      {parts.map((p, i) =>
-        p.type === "code" ? (
-          <pre key={i} className="md-pre">
-            {p.lang ? <span className="md-lang">{p.lang}</span> : null}
-            <code>{p.body}</code>
-          </pre>
-        ) : (
-          <div
-            key={i}
-            dangerouslySetInnerHTML={{ __html: renderBlock(p.body) }}
-          />
+      {parts.map((part, index) =>
+        part.type === "code" ? <CodeBlock key={index} lang={part.lang || ""} body={part.body} /> : (
+          <div key={index} dangerouslySetInnerHTML={{ __html: renderBlock(part.body) }} />
         ),
       )}
     </div>
