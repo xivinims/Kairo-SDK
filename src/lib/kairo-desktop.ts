@@ -21,7 +21,7 @@ export const DEFAULT_DESKTOP_PERMISSIONS: DesktopPermission[] = [
   { scope: "network", enabled: false, reason: "Rede e uploads externos devem ser confirmados" },
   { scope: "processes", enabled: false, reason: "Gerenciar processos requer atenção especial" },
   { scope: "notifications", enabled: true, reason: "Notificações do sistema" },
-  { scope: "camera", enabled: false, reason: "Camera exige consentimento explícito" },
+  { scope: "camera", enabled: false, reason: "Câmera exige consentimento explícito" },
   { scope: "microphone", enabled: false, reason: "Microfone exige consentimento explícito" },
   { scope: "screen", enabled: false, reason: "Captura de tela deve ser opt-in" },
 ];
@@ -31,19 +31,19 @@ export function isDesktopRuntime() {
 }
 
 export async function getDesktopInfo() {
-  if (!isDesktopRuntime()) return { platform: "web", runtime: "browser" };
+  if (!isDesktopRuntime()) return { platform: "web", runtime: "browser" } as const;
+
   try {
-    const { platform } = await import("@tauri-apps/api/os");
-    return { platform: await platform(), runtime: "tauri" };
+    const { invoke } = await import("@tauri-apps/api/core");
+    const platform = await invoke<string>("get_runtime");
+    return { platform, runtime: "tauri" } as const;
   } catch {
-    return { platform: "unknown", runtime: "tauri" };
+    return { platform: "unknown", runtime: "tauri" } as const;
   }
 }
 
 export async function listDesktopDirectory(path: string) {
-  if (!isDesktopRuntime()) {
-    return [] as string[];
-  }
+  if (!isDesktopRuntime()) return [] as string[];
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     return (await invoke<string[]>("list_directory", { path })) ?? [];
@@ -53,9 +53,7 @@ export async function listDesktopDirectory(path: string) {
 }
 
 export async function readDesktopFile(path: string) {
-  if (!isDesktopRuntime()) {
-    return "";
-  }
+  if (!isDesktopRuntime()) return "";
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     return (await invoke<string>("read_file", { path })) ?? "";
