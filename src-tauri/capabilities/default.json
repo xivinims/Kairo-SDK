@@ -1,0 +1,20 @@
+{
+  "permissions": [
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$HOME/**" }]
+    },
+    {
+      "identifier": "shell:allow-exec",
+      "allow": [{ "command": "npm" }, { "command": "node" }, { "command": "git" }, { "command": "python" }, { "command": "python3" }, { "command": "cargo" }]
+    }
+  ]
+}
