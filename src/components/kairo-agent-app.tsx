@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowUp, Bot, Globe2, Paperclip, Plus, Settings2, Sparkles, User } from "lucide-react";
+import { ArrowUp, Bot, Plus, Sparkles, User } from "lucide-react";
 import { askKairoAgent, type KairoMessage } from "@/lib/kairo-agent";
 import { detectKairoSkills } from "@/lib/kairo-skills";
 import { Markdown } from "./markdown";
@@ -46,7 +46,6 @@ export function KairoAgentApp() {
         </div>
         <div className="flex items-center gap-1.5">
           <button type="button" onClick={newChat} className="flex size-9 items-center justify-center rounded-full text-white/55 hover:bg-white/10 hover:text-white" aria-label="Novo chat"><Plus className="size-4" /></button>
-          <button type="button" className="flex size-9 items-center justify-center rounded-full text-white/55 hover:bg-white/10 hover:text-white" aria-label="Configurações"><Settings2 className="size-4" /></button>
         </div>
       </header>
 
@@ -81,8 +80,6 @@ export function KairoAgentApp() {
           <textarea value={draft} disabled={sending} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} rows={2} placeholder="Pergunte qualquer coisa ao Kairo…" className="w-full resize-none bg-transparent px-3 py-2 text-[15px] outline-none placeholder:text-white/30" />
           <div className="flex items-center justify-between gap-2 px-1 pb-1">
             <div className="flex items-center gap-1">
-              <button type="button" className="flex size-9 items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white" aria-label="Adicionar arquivo"><Paperclip className="size-4" /></button>
-              <button type="button" className="flex size-9 items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white" aria-label="Pesquisa web"><Globe2 className="size-4" /></button>
               <select value={contentLevel} onChange={(e) => setContentLevel(e.target.value as "safe" | "mature")} className="rounded-full bg-transparent px-2 py-1 text-[10px] text-white/40 outline-none"><option value="safe" className="bg-zinc-900">Seguro</option><option value="mature" className="bg-zinc-900">Maduro</option></select>
               <span className="hidden text-[10px] text-white/25 sm:inline">{skills.join(" · ")}</span>
             </div>
