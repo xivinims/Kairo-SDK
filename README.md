@@ -1,48 +1,45 @@
-# Kairo Desktop
+# Kairo Agent
 
-O Kairo agora possui uma base de aplicativo desktop multiplataforma usando Tauri 2, mantendo a interface React/TypeScript e o visual workspace escuro/liquid glass.
+Kairo Agent é o aplicativo de agente de IA deste repositório. A aplicação usa Gemini 2.5 Flash no servidor, com pesquisa web nativa e um registro único de skills.
 
-## Rodar como aplicativo desktop
+## Configuração
 
-Pré-requisitos:
+Crie um arquivo `.env` ou configure a variável no ambiente de deploy:
 
-- Node.js 20+
-- Rust toolchain
-- dependências de desenvolvimento do Tauri para seu sistema
+```env
+GEMINI_API_KEY=sua_chave
+```
+
+A chave é usada somente no servidor; o navegador não recebe a credencial.
+
+## Desenvolvimento
 
 ```bash
 npm install
-npm run desktop:dev
+npm run dev
 ```
 
-Gerar instaladores:
+## Build
 
 ```bash
+npm run build
+```
+
+## Desktop
+
+O projeto também mantém o shell Tauri 2 para distribuição desktop:
+
+```bash
+npm run desktop:dev
 npm run desktop:build
 ```
 
-O build do Tauri gera os formatos suportados pelo sistema de compilação, incluindo instalador Windows quando executado no Windows e pacotes Linux quando executado no Linux.
+## Arquitetura
 
-## Segurança do agente
+- `src/components/kairo-agent-app.tsx`: interface principal do Agent.
+- `src/lib/kairo-agent.ts`: execução server-side do agente e integração Gemini.
+- `src/lib/kairo-skills.ts`: registro único e detecção de skills.
+- `src/routes/`: única rota da aplicação.
+- `src-tauri/`: runtime desktop com acesso local restrito.
 
-O Kairo Desktop não deve receber acesso total silencioso. A versão desktop deve evoluir com:
-
-- pastas autorizadas pelo usuário;
-- confirmação antes de executar comandos;
-- allowlist de executáveis;
-- auditoria de operações;
-- revogação de permissões;
-- confirmação antes de enviar arquivos à API Gemini.
-
-A ponte nativa inicial oferece leitura/escrita e execução allowlisted como base de desenvolvimento. Antes de distribuir publicamente, conecte todas as chamadas a uma tela de permissão e registre cada operação.
-
-## Visual
-
-A interface foi ajustada para um workspace escuro inspirado nas referências:
-
-- barra de título compacta;
-- rail lateral de workspaces;
-- área central de chat e artefatos;
-- painel direito de tarefas;
-- cards translúcidos e bordas sutis;
-- preview de sites em sandbox.
+O Agent não expõe chaves de API no cliente e não mantém os antigos provedores, bots, autenticação e fluxos de aplicativo como parte da execução principal.
