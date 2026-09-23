@@ -1,25 +1,37 @@
+import type { ReactNode } from "react";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
-import { KairoAgentApp } from "@/components/kairo-agent-app";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Kairo Agent" },
-      { name: "description", content: "Kairo — agente de IA." },
+      { title: "Kairo App" },
+      { name: "description", content: "Kairo App — o agente de IA Kairo para chat, código, pesquisa e tarefas agendadas." },
       { name: "theme-color", content: "#09090b" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "icon", href: "/favicon.svg" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;600&display=swap" },
+      { rel: "stylesheet", href: appCss },
+    ],
   }),
-  component: () => (
+  shellComponent: RootDocument,
+});
+
+function RootDocument({ children }: { children: ReactNode }) {
+  return (
     <html lang="pt-BR" className="dark antialiased">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+      </head>
       <body>
-        <KairoAgentApp />
+        {children}
         <Scripts />
       </body>
     </html>
-  ),
-});
+  );
+}

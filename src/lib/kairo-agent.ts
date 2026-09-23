@@ -24,6 +24,7 @@ const MessageSchema = z.object({
 const RequestSchema = z.object({
   messages: z.array(MessageSchema).min(1).max(32),
   contentLevel: z.enum(["safe", "mature"]).default("safe"),
+  disabledSkills: z.array(z.string()).max(40).default([]),
 });
 
 const BLOCKED_PATTERNS = [
@@ -33,34 +34,32 @@ const BLOCKED_PATTERNS = [
   /incest/i,
   /bestiality/i,
   /forced\s+sex/i,
-  /rape/i,
+  /\brape\b/i,
 ];
 
 function validateMessages(messages: KairoMessage[]) {
   const latest = messages[messages.length - 1]?.content ?? "";
   if (!latest.trim()) return "Mensagem vazia.";
-  if (BLOCKED_PATTERNS.some((pattern) => pattern.test(latest))) {
-    return "Solicitação bloqueada por segurança.";
-  }
+  if (BLOCKED_PATTERNS.some((pattern) => pattern.test(latest))) return "Solicitação bloqueada por segurança.";
   return null;
 }
 
-function buildSystemPrompt(latestMessage: string, contentLevel: KairoContentLevel) {
-  const skills = detectKairoSkills(latestMessage);
+function buildSystemPrompt(latest: string, contentLevel: KairoContentLevel, disabled: string[]) {
+  const skills = detectKairoSkills(latest, disabled);
   return [
-    "Você é Kairo Agent, um agente de IA geral, técnico e criativo.",
-    "Responda em português brasileiro quando o usuário falar português; acompanhe o idioma usado pelo usuário.",
+    "Você é Kairo, o agente de IA do Kairo App: geral, técnico e criativo.",
+    "Responda em português brasileiro quando o usuário falar português; acompanhe o idioma do usuário.",
     "Vá direto ao ponto, sem preâmbulos vazios e sem fingir que executou ações que não executou.",
-    "Para programação, entregue soluções completas e práticas. Para pesquisa, diferencie fatos conhecidos de informações que precisam de verificação.",
-    "Quando houver uma tarefa complexa, organize mentalmente o trabalho antes de responder e faça uma checagem final de consistência. Não exponha raciocínio interno privado.",
+    "Para programação, entregue soluções completas em blocos de código com a linguagem indicada. Para pesquisa, diferencie fatos de informações a verificar.",
+    "Em tarefas complexas, organize o trabalho e faça uma checagem final de consistência, sem expor raciocínio interno privado.",
     "Não invente fontes, links, arquivos, resultados de ferramentas ou ações no computador.",
     `Nível de conteúdo: ${contentLevel}. Não produza conteúdo sexual envolvendo menores, exploração sexual, coerção sexual ou bestialidade.`,
     `Skills ativas: ${skills.join(", ")}.`,
-    buildSkillInstructions(latestMessage),
+    buildSkillInstructions(latest, disabled),
   ].join("\n");
 }
 
-async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoContentLevel) {
+async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoContentLevel, disabled: string[]) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error("missing-key");
 
@@ -72,11 +71,8 @@ async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoC
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: AbortSignal.timeout(45000),
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: buildSystemPrompt(latest, contentLevel) }] },
-        contents: messages.map((message) => ({
-          role: message.role === "assistant" ? "model" : "user",
-          parts: [{ text: message.content }],
-        })),
+        systemInstruction: { parts: [{ text: buildSystemPrompt(latest, contentLevel, disabled) }] },
+        contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
         tools: [{ googleSearch: {} }],
         generationConfig: { maxOutputTokens: 4096, temperature: 0.7, topP: 0.95 },
       }),
@@ -97,30 +93,30 @@ async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoC
     return "Não posso atender a esse pedido dessa forma. Posso ajudar com uma versão segura da solicitação.";
   }
 
-  const answer = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
+  const answer = candidate?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? "";
   if (!answer) throw new Error("empty");
 
-  const sources = (candidate.groundingMetadata?.groundingChunks ?? [])
-    .map((chunk) => chunk.web?.uri && chunk.web.title ? `[${chunk.web.title}](${chunk.web.uri})` : null)
-    .filter((value): value is string => Boolean(value));
+  const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
+    .map((c) => (c.web?.uri && c.web.title ? `[${c.web.title}](${c.web.uri})` : null))
+    .filter((v): v is string => Boolean(v));
 
   if (sources.length && /(pesquis|not[ií]cia|atual|fonte|hoje|agora)/i.test(latest)) {
     const unique = [...new Set(sources)].slice(0, 5);
-    return `${answer}\n\n**Fontes**\n${unique.map((source) => `- ${source}`).join("\n")}`;
+    return `${answer}\n\n**Fontes**\n${unique.map((s) => `- ${s}`).join("\n")}`;
   }
   return answer;
 }
 
 export const askKairoAgent = createServerFn({ method: "POST" })
-  .validator(RequestSchema)
+  .inputValidator(RequestSchema)
   .handler(async ({ data }): Promise<KairoAgentResult> => {
     const latest = data.messages[data.messages.length - 1]?.content ?? "";
-    const skills = detectKairoSkills(latest);
+    const skills = detectKairoSkills(latest, data.disabledSkills);
     const validation = validateMessages(data.messages);
     if (validation) return { ok: false, skills, error: validation };
 
     try {
-      return { ok: true, answer: await generateWithGemini(data.messages, data.contentLevel), skills };
+      return { ok: true, answer: await generateWithGemini(data.messages, data.contentLevel, data.disabledSkills), skills };
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown";
       return {
@@ -128,11 +124,7 @@ export const askKairoAgent = createServerFn({ method: "POST" })
         skills,
         error: message === "missing-key"
           ? "GEMINI_API_KEY não está configurada no ambiente do servidor."
-          : "Não foi possível executar o Kairo Agent agora.",
+          : "Não foi possível executar o Kairo agora.",
       };
     }
   });
-
-export function getKairoSafetySummary() {
-  return { protected: true, model: "gemini-2.5-flash", nativeWebSearch: true, apiKeyClientExposure: false } as const;
-}

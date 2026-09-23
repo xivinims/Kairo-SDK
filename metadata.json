@@ -1,8 +1,6 @@
 {
-  "name": "Remix Remix kairo-clone",
-  "description": "Imported from GitHub: murilosilvadacosta5ano-dotcom/kairo-clone",
+  "name": "Kairo App",
+  "description": "Kairo App — agente de IA Kairo com chat, skills e tarefas agendadas.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

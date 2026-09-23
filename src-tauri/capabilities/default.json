@@ -1,3 +1,7 @@
 {
-  "permissions": []
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões padrão da janela principal do Kairo App",
+  "windows": ["main"],
+  "permissions": ["core:default"]
 }
