@@ -1,14 +1,55 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{fs, path::Path};
+use std::{env, fs, path::{Path, PathBuf}};
 use tauri::command;
+
+fn allowed_roots() -> Vec<PathBuf> {
+  let mut roots = Vec::new();
+  if let Some(home) = env::var_os("HOME").or_else(|| env::var_os("USERPROFILE")) {
+    let home = PathBuf::from(home);
+    roots.push(home.join("Documents"));
+    roots.push(home.join("Projects"));
+  }
+  roots
+}
+
+fn canonical_existing(path: &Path) -> Result<PathBuf, String> {
+  fs::canonicalize(path).map_err(|e| format!("Invalid path: {} ({})", path.display(), e))
+}
+
+fn is_allowed_path(path: &Path) -> Result<bool, String> {
+  let candidate = canonical_existing(path)?;
+  let roots = allowed_roots();
+  if roots.is_empty() {
+    return Err("No authorized desktop folders configured.".to_string());
+  }
+
+  for root in roots {
+    if let Ok(root) = fs::canonicalize(root) {
+      if candidate == root || candidate.starts_with(&root) {
+        return Ok(true);
+      }
+    }
+  }
+  Ok(false)
+}
+
+fn require_allowed_path(path: &Path) -> Result<(), String> {
+  if is_allowed_path(path)? {
+    Ok(())
+  } else {
+    Err(format!("Access denied outside authorized folders: {}", path.display()))
+  }
+}
 
 #[command]
 fn list_directory(path: String) -> Result<Vec<String>, String> {
   let dir = Path::new(&path);
-  if !dir.exists() {
-    return Err(format!("Path not found: {}", path));
+  require_allowed_path(dir)?;
+  if !dir.is_dir() {
+    return Err(format!("Not a directory: {}", path));
   }
+
   let mut items = Vec::new();
   for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
     let path = entry.map_err(|e| e.to_string())?.path();
@@ -21,32 +62,45 @@ fn list_directory(path: String) -> Result<Vec<String>, String> {
 
 #[command]
 fn read_file(path: String) -> Result<String, String> {
-  fs::read_to_string(&path).map_err(|e| format!("{}: {}", path, e))
+  let p = Path::new(&path);
+  require_allowed_path(p)?;
+  fs::read_to_string(p).map_err(|e| format!("{}: {}", path, e))
 }
 
 #[command]
 fn write_file(path: String, content: String) -> Result<(), String> {
   let p = Path::new(&path);
-  if let Some(parent) = p.parent() {
-    if !parent.as_os_str().is_empty() && !parent.exists() {
-      fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
+  let parent = p.parent().ok_or_else(|| "Invalid file path".to_string())?;
+
+  // Require the destination's parent to already exist. This prevents path
+  // traversal from creating new directory trees outside the authorized roots.
+  if !parent.exists() {
+    return Err("Parent directory does not exist.".to_string());
   }
+  require_allowed_path(parent)?;
   fs::write(p, content).map_err(|e| e.to_string())
 }
 
 #[command]
 fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Result<String, String> {
-  let allowed = ["git", "npm", "node", "npx", "python", "python3", "cargo", "rustc"];
-  let executable = if let Some(cmd) = command.split('/').last() { cmd.to_string() } else { command.clone() };
+  let executable = Path::new(&command)
+    .file_name()
+    .and_then(|name| name.to_str())
+    .unwrap_or(&command);
 
-  if !allowed.iter().any(|value| *value == executable) {
+  // Only read-only development commands are exposed here. Arbitrary
+  // interpreters/package runners are intentionally excluded.
+  let allowed = ["git", "pwd", "ls"];
+  if !allowed.contains(&executable) {
     return Err(format!("Command not allowed: {}", executable));
   }
 
-  let output = std::process::Command::new(&command)
+  let cwd_path = Path::new(&cwd);
+  require_allowed_path(cwd_path)?;
+
+  let output = std::process::Command::new(executable)
     .args(&args)
-    .current_dir(cwd)
+    .current_dir(cwd_path)
     .output()
     .map_err(|e| e.to_string())?;
 
