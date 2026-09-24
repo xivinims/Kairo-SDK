@@ -291,7 +291,6 @@ fn main() {
       read_file,
       write_file,
       run_allowed_command,
-      get_runtime,
       ask_kairo
     ])
     .run(tauri::generate_context!())
