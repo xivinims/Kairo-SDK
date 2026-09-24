@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::{Deserialize, Serialize};
 use std::{env, fs, path::{Path, PathBuf}};
 use tauri::command;
 
@@ -72,8 +73,6 @@ fn write_file(path: String, content: String) -> Result<(), String> {
   let p = Path::new(&path);
   let parent = p.parent().ok_or_else(|| "Invalid file path".to_string())?;
 
-  // Require the destination's parent to already exist. This prevents path
-  // traversal from creating new directory trees outside the authorized roots.
   if !parent.exists() {
     return Err("Parent directory does not exist.".to_string());
   }
@@ -88,8 +87,6 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
     .and_then(|name| name.to_str())
     .unwrap_or(&command);
 
-  // Only read-only inspection commands are exposed. Arbitrary interpreters,
-  // package runners and mutating git operations are intentionally excluded.
   let allowed = match executable {
     "pwd" => args.is_empty(),
     "ls" => args.iter().all(|arg| !arg.starts_with('-') || matches!(arg.as_str(), "-a" | "-A" | "-l")),
@@ -127,9 +124,164 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
   }
 }
 
+#[derive(Debug, Deserialize)]
+struct KairoRequest {
+  messages: Vec<KairoMessage>,
+  #[serde(rename = "contentLevel")]
+  content_level: String,
+  #[serde(rename = "systemInstruction")]
+  system_instruction: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct KairoMessage {
+  role: String,
+  content: String,
+}
+
+#[derive(Debug, Serialize)]
+struct KairoAgentResult {
+  ok: bool,
+  answer: Option<String>,
+  skills: Vec<String>,
+  error: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GeminiResponse {
+  candidates: Option<Vec<GeminiCandidate>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GeminiCandidate {
+  #[serde(rename = "finishReason")]
+  finish_reason: Option<String>,
+  content: Option<GeminiContent>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GeminiContent {
+  parts: Option<Vec<GeminiPart>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GeminiPart {
+  text: Option<String>,
+}
+
 #[command]
-fn get_runtime() -> String {
-  std::env::consts::OS.to_string()
+async fn ask_kairo(request: KairoRequest) -> Result<KairoAgentResult, String> {
+  let latest = request.messages.last().map(|m| m.content.trim()).unwrap_or("");
+  if latest.is_empty() {
+    return Ok(KairoAgentResult {
+      ok: false,
+      answer: None,
+      skills: Vec::new(),
+      error: Some("Mensagem vazia.".to_string()),
+    });
+  }
+
+  let api_key = env::var("GEMINI_API_KEY")
+    .map_err(|_| "GEMINI_API_KEY não está configurada no ambiente do aplicativo.".to_string())?
+    .trim()
+    .to_string();
+
+  let blocked = [
+    "child sexual",
+    "minor sexual",
+    "sexual exploitation",
+    "incest",
+    "bestiality",
+    "forced sex",
+    "rape",
+  ];
+
+  let latest_lower = latest.to_lowercase();
+  if blocked.iter().any(|needle| latest_lower.contains(needle)) {
+    return Ok(KairoAgentResult {
+      ok: false,
+      answer: None,
+      skills: Vec::new(),
+      error: Some("Solicitação bloqueada por segurança.".to_string()),
+    });
+  }
+
+  let contents: Vec<serde_json::Value> = request.messages.iter().map(|message| {
+    serde_json::json!({
+      "role": if message.role == "assistant" { "model" } else { "user" },
+      "parts": [{"text": message.content}]
+    })
+  }).collect();
+
+  let body = serde_json::json!({
+    "systemInstruction": { "parts": [{ "text": request.system_instruction }] },
+    "contents": contents,
+    "tools": [{ "googleSearch": {} }],
+    "generationConfig": {
+      "maxOutputTokens": 4096,
+      "temperature": 0.7,
+      "topP": 0.95
+    }
+  });
+
+  let response = reqwest::Client::new()
+    .post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
+    .header("Content-Type", "application/json")
+    .header("x-goog-api-key", api_key)
+    .json(&body)
+    .send()
+    .await
+    .map_err(|_| "Não foi possível conectar ao Gemini agora.".to_string())?;
+
+  let status = response.status();
+  if !status.is_success() {
+    return Ok(KairoAgentResult {
+      ok: false,
+      answer: None,
+      skills: Vec::new(),
+      error: Some(format!("O Gemini retornou HTTP {}.", status.as_u16())),
+    });
+  }
+
+  let body = response.json::<GeminiResponse>()
+    .await
+    .map_err(|_| "Resposta inválida do Gemini.".to_string())?;
+
+  let candidate = body.candidates.and_then(|mut candidates| candidates.drain(..).next());
+  if candidate.as_ref().and_then(|c| c.finish_reason.as_deref()) == Some("SAFETY") {
+    return Ok(KairoAgentResult {
+      ok: true,
+      answer: Some("Não posso atender a esse pedido dessa forma. Posso ajudar com uma versão segura da solicitação.".to_string()),
+      skills: Vec::new(),
+      error: None,
+    });
+  }
+
+  let answer = candidate
+    .and_then(|candidate| candidate.content)
+    .and_then(|content| content.parts)
+    .unwrap_or_default()
+    .into_iter()
+    .filter_map(|part| part.text)
+    .collect::<String>()
+    .trim()
+    .to_string();
+
+  if answer.is_empty() {
+    return Ok(KairoAgentResult {
+      ok: false,
+      answer: None,
+      skills: Vec::new(),
+      error: Some("O Gemini não retornou conteúdo.".to_string()),
+    });
+  }
+
+  Ok(KairoAgentResult {
+    ok: true,
+    answer: Some(answer),
+    skills: Vec::new(),
+    error: None,
+  })
 }
 
 fn main() {
@@ -139,7 +291,8 @@ fn main() {
       read_file,
       write_file,
       run_allowed_command,
-      get_runtime
+      get_runtime,
+      ask_kairo
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
