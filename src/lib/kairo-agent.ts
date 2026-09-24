@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 import { buildSkillInstructions, detectKairoSkills, type KairoSkillId } from "./kairo-skills";
 
@@ -14,6 +15,11 @@ export interface KairoAgentResult {
   answer?: string;
   skills: KairoSkillId[];
   error?: string;
+}
+
+interface KairoRequestData {
+  messages: KairoMessage[];
+  contentLevel: KairoContentLevel;
 }
 
 const MessageSchema = z.object({
@@ -111,7 +117,7 @@ async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoC
   return answer;
 }
 
-export const askKairoAgent = createServerFn({ method: "POST" })
+const askKairoAgentServer = createServerFn({ method: "POST" })
   .validator(RequestSchema)
   .handler(async ({ data }): Promise<KairoAgentResult> => {
     const latest = data.messages[data.messages.length - 1]?.content ?? "";
@@ -132,6 +138,34 @@ export const askKairoAgent = createServerFn({ method: "POST" })
       };
     }
   });
+
+export async function askKairoAgent(input: { data: KairoRequestData }): Promise<KairoAgentResult> {
+  const latest = input.data.messages[input.data.messages.length - 1]?.content ?? "";
+  const skills = detectKairoSkills(latest);
+
+  if (import.meta.env.MODE === "desktop") {
+    const validation = validateMessages(input.data.messages);
+    if (validation) return { ok: false, skills, error: validation };
+
+    try {
+      return await invoke<KairoAgentResult>("ask_kairo", {
+        request: {
+          messages: input.data.messages,
+          contentLevel: input.data.contentLevel,
+          systemInstruction: buildSystemPrompt(latest, input.data.contentLevel),
+        },
+      });
+    } catch {
+      return {
+        ok: false,
+        skills,
+        error: "Não foi possível executar o Kairo Agent no aplicativo desktop agora.",
+      };
+    }
+  }
+
+  return askKairoAgentServer(input);
+}
 
 export function getKairoSafetySummary() {
   return { protected: true, model: "gemini-2.5-flash", nativeWebSearch: true, apiKeyClientExposure: false } as const;
