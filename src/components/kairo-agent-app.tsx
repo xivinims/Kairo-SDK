@@ -63,11 +63,17 @@ export function KairoAgentApp() {
                 {messages.map((message, index) => (
                   <div key={index} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                     {message.role === "assistant" && (
-                      <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-xl bg-white text-black">
+                      <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-400 text-white shadow-[0_0_18px_-4px_rgba(168,85,247,0.55)]">
                         <Bot className="size-4" />
                       </div>
                     )}
-                    <div className={message.role === "user" ? "max-w-[82%] rounded-[24px] bg-white/[0.09] px-4 py-3" : "min-w-0 max-w-[88%] pt-1"}>
+                    <div
+                      className={
+                        message.role === "user"
+                          ? "max-w-[82%] rounded-[24px] border border-white/10 bg-white/[0.06] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl"
+                          : "min-w-0 max-w-[88%] pt-1"
+                      }
+                    >
                       {message.role === "user" ? (
                         <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{message.content}</p>
                       ) : (
@@ -83,10 +89,10 @@ export function KairoAgentApp() {
                 ))}
                 {sending && (
                   <div className="flex items-center gap-3 text-sm text-white/45">
-                    <div className="flex size-8 items-center justify-center rounded-xl bg-white text-black">
-                      <Bot className="size-4" />
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/20 to-sky-400/20 ring-1 ring-white/10">
+                      <img src="/kairo-thinking.png" alt="Kairo pensando" className="size-5 opacity-90" />
                     </div>
-                    <span>Kairo está trabalhando…</span>
+                    <span>Kairo está pensando…</span>
                   </div>
                 )}
               </div>
@@ -129,7 +135,7 @@ export function KairoAgentApp() {
               <button
                 type="submit"
                 disabled={!draft.trim() || sending}
-                className="flex size-9 items-center justify-center rounded-full bg-white text-black disabled:bg-white/10 disabled:text-white/25"
+                className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-400 text-white shadow-[0_0_14px_-4px_rgba(168,85,247,0.6)] transition disabled:bg-white/10 disabled:bg-none disabled:text-white/25 disabled:shadow-none"
                 aria-label="Enviar"
               >
                 <ArrowUp className="size-4" />
