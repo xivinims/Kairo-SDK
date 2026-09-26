@@ -17,11 +17,10 @@ import { KAIRO_SKILLS, type KairoSkillId } from "@/lib/kairo-skills";
 /**
  * Sidebar + welcome layout for Kairo Agent.
  *
- * Same visual language already used in kairo-agent-app.tsx (near-black
- * #09090b surface, white-on-black accent, no gradients/color-coded cards)
- * so the new screen doesn't fork the app's identity — it just gives the
- * empty state a real home: nav, recent chats, and the actual skill
- * registry from kairo-skills.ts instead of static placeholder copy.
+ * Same near-black #09090b surface as the rest of the app, now with a
+ * violet→fuchsia→sky gradient reserved for the logo mark, hero icon and
+ * primary actions — one accent, used consistently, instead of scattered
+ * color. Content still comes straight from kairo-skills.ts, not static copy.
  */
 
 const SKILL_ICON: Partial<Record<KairoSkillId, typeof Code2>> = {
@@ -70,7 +69,7 @@ export function KairoSidebar({ recent = [], onNewChat, active = "home" }: {
   return (
     <aside className="flex h-dvh w-64 shrink-0 flex-col border-r border-white/[0.06] bg-[#0c0c0e] text-white">
       <div className="flex items-center gap-2 px-4 py-4">
-        <div className="flex size-7 items-center justify-center rounded-lg bg-white text-black">
+        <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-400 text-white shadow-[0_0_12px_-3px_rgba(168,85,247,0.6)]">
           <Sparkles className="size-3.5" />
         </div>
         <span className="text-sm font-semibold tracking-tight">Kairo</span>
@@ -134,7 +133,7 @@ export function KairoWelcome({ onPickPrompt }: { onPickPrompt: (prompt: string) 
 
   return (
     <div className="m-auto w-full max-w-2xl py-14 text-center">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[20px] bg-white text-black shadow-2xl">
+      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-[20px] bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-400 text-white shadow-[0_0_30px_-6px_rgba(168,85,247,0.55)]">
         <Sparkles className="size-6" />
       </div>
       <h1 className="text-3xl font-semibold tracking-tight">Como posso ajudar?</h1>
@@ -150,7 +149,7 @@ export function KairoWelcome({ onPickPrompt }: { onPickPrompt: (prompt: string) 
               key={skill.id}
               type="button"
               onClick={() => onPickPrompt(`Preciso de ajuda com ${skill.label.toLowerCase()}: `)}
-              className="flex flex-col items-start gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3.5 text-left hover:bg-white/[0.06]"
+              className="flex flex-col items-start gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3.5 text-left transition hover:border-white/[0.14] hover:bg-white/[0.06]"
             >
               <Icon className="size-4 text-white/70" />
               <span className="text-[13px] font-medium text-white/85">{skill.label}</span>
