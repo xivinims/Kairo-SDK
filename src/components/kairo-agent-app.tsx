@@ -34,10 +34,10 @@ export function KairoAgentApp() {
       if (result.ok && result.answer) {
         setMessages((current) => [...current, { role: "assistant", content: result.answer! }]);
       } else {
-        setError(result.error ?? "O Kairo não conseguiu responder agora.");
+        setError(result.error ?? "O Zeno não conseguiu responder agora.");
       }
     } catch {
-      setError("Não foi possível conectar ao Kairo Agent agora.");
+      setError("Não foi possível conectar ao Zeno agora.");
     } finally {
       setSending(false);
     }
@@ -90,9 +90,9 @@ export function KairoAgentApp() {
                 {sending && (
                   <div className="flex items-center gap-3 text-sm text-white/45">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/20 to-sky-400/20 ring-1 ring-white/10">
-                      <img src="/kairo-thinking.png" alt="Kairo pensando" className="size-5 opacity-90" />
+                      <img src="/kairo-thinking.png" alt="Zeno pensando" className="size-5 opacity-90" />
                     </div>
-                    <span>Kairo está pensando…</span>
+                    <span>Zeno está pensando…</span>
                   </div>
                 )}
               </div>
@@ -114,7 +114,7 @@ export function KairoAgentApp() {
                 }
               }}
               rows={2}
-              placeholder="Pergunte qualquer coisa ao Kairo…"
+              placeholder="Pergunte qualquer coisa ao Zeno…"
               className="w-full resize-none bg-transparent px-3 py-2 text-[15px] outline-none placeholder:text-white/30"
             />
             <div className="flex items-center justify-between gap-2 px-1 pb-1">
@@ -142,7 +142,7 @@ export function KairoAgentApp() {
               </button>
             </div>
           </form>
-          <p className="mt-2 text-center text-[10px] text-white/20">Kairo pode cometer erros. Verifique informações importantes.</p>
+          <p className="mt-2 text-center text-[10px] text-white/20">Zeno pode cometer erros. Verifique informações importantes.</p>
         </div>
       </div>
     </div>
