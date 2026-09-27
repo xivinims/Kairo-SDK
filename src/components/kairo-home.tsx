@@ -15,7 +15,7 @@ import {
 import { KAIRO_SKILLS, type KairoSkillId } from "@/lib/kairo-skills";
 
 /**
- * Sidebar + welcome layout for Kairo Agent.
+ * Sidebar + welcome layout for Zeno.
  *
  * Same near-black #09090b surface as the rest of the app, now with a
  * violet→fuchsia→sky gradient reserved for the logo mark, hero icon and
@@ -72,10 +72,7 @@ export function KairoSidebar({ recent = [], onNewChat, active = "home" }: {
         <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-400 text-white shadow-[0_0_12px_-3px_rgba(168,85,247,0.6)]">
           <Sparkles className="size-3.5" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">Kairo</span>
-        <span className="ml-auto rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-white/40">
-          gemini-2.5-flash
-        </span>
+        <span className="text-sm font-semibold tracking-tight">Zeno</span>
       </div>
 
       <div className="px-3">
@@ -138,7 +135,7 @@ export function KairoWelcome({ onPickPrompt }: { onPickPrompt: (prompt: string) 
       </div>
       <h1 className="text-3xl font-semibold tracking-tight">Como posso ajudar?</h1>
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/40">
-        Kairo Agent combina pesquisa nativa e um registro de skills — código, design, documentos, mundos e mais.
+        Zeno combina pesquisa nativa e um registro de skills — código, design, documentos, mundos e mais.
       </p>
 
       <div className="mx-auto mt-8 grid max-w-xl grid-cols-2 gap-2.5 sm:grid-cols-3">
