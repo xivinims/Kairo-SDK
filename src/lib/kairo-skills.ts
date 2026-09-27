@@ -43,7 +43,7 @@ export function detectKairoSkills(message: string): KairoSkillId[] {
 export function loadKairoSkills(message: string): KairoSkillModule[] {
   const detected = detectKairoSkills(message);
   if (detected[0] === "general") {
-    return [{ id: "general", label: "Kairo", description: "Assistente geral", triggers: /.*/i, prompt: "Responda diretamente e com contexto." }];
+    return [{ id: "general", label: "Zeno", description: "Assistente geral", triggers: /.*/i, prompt: "Responda diretamente e com contexto." }];
   }
   return KAIRO_SKILLS.filter((skill) => detected.includes(skill.id));
 }
