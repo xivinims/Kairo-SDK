@@ -54,7 +54,7 @@ function validateMessages(messages: KairoMessage[]) {
 function buildSystemPrompt(latestMessage: string, contentLevel: KairoContentLevel) {
   const skills = detectKairoSkills(latestMessage);
   return [
-    "Você é Kairo Agent, um agente de IA geral, técnico e criativo.",
+    "Você é Zeno, um agente de IA geral, técnico e criativo.",
     "Responda em português brasileiro quando o usuário falar português; acompanhe o idioma usado pelo usuário.",
     "Vá direto ao ponto, sem preâmbulos vazios e sem fingir que executou ações que não executou.",
     "Para programação, entregue soluções completas e práticas. Para pesquisa, diferencie fatos conhecidos de informações que precisam de verificação.",
@@ -134,7 +134,7 @@ const askKairoAgentServer = createServerFn({ method: "POST" })
         skills,
         error: message === "missing-key"
           ? "GEMINI_API_KEY não está configurada no ambiente do servidor."
-          : "Não foi possível executar o Kairo Agent agora.",
+          : "Não foi possível executar o Zeno agora.",
       };
     }
   });
@@ -159,7 +159,7 @@ export async function askKairoAgent(input: { data: KairoRequestData }): Promise<
       return {
         ok: false,
         skills,
-        error: "Não foi possível executar o Kairo Agent no aplicativo desktop agora.",
+        error: "Não foi possível executar o Zeno no aplicativo desktop agora.",
       };
     }
   }
