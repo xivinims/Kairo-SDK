@@ -132,8 +132,11 @@ fn execute_allowed_command(command: &str, args: &[String], cwd: &str) -> Result<
     stdout
   };
 
-  let bounded = if combined.len() > 80_000 {
-    format!("{}\n\n[output truncated]", &combined[..80_000])
+  let bounded = if combined.chars().count() > 80_000 {
+    format!(
+      "{}\n\n[output truncated]",
+      combined.chars().take(80_000).collect::<String>()
+    )
   } else {
     combined
   };
@@ -154,7 +157,7 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
 struct ZenoRequest {
   messages: Vec<ZenoMessage>,
   #[serde(rename = "contentLevel")]
-  content_level: String,
+  _content_level: String,
   #[serde(rename = "apiKey")]
   api_key: Option<String>,
   model: Option<String>,
@@ -186,11 +189,21 @@ struct ZenoAgentResult {
   error: Option<String>,
 }
 
-fn gemini_tools() -> Value {
+fn gemini_function_tools() -> Value {
   json!([
-    { "googleSearch": {} },
     {
       "functionDeclarations": [
+        {
+          "name": "web_search",
+          "description": "Pesquisa a web em tempo real usando Google Search e retorna resumo e fontes.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "query": { "type": "STRING" }
+            },
+            "required": ["query"]
+          }
+        },
         {
           "name": "desktop_roots",
           "description": "Lista as pastas locais que o Zeno pode acessar no aplicativo desktop.",
@@ -217,8 +230,141 @@ fn gemini_tools() -> Value {
   ])
 }
 
-fn execute_desktop_tool(name: &str, args: &Value) -> (Value, ZenoToolEvent) {
+async fn execute_web_search(
+  client: &reqwest::Client,
+  api_key: &str,
+  model: &str,
+  args: &Value,
+) -> Result<Value, String> {
+  let query = args
+    .get("query")
+    .and_then(Value::as_str)
+    .unwrap_or("")
+    .trim();
+
+  if query.is_empty() {
+    return Err("Consulta de pesquisa vazia.".to_string());
+  }
+
+  let body = json!({
+    "contents": [{
+      "role": "user",
+      "parts": [{
+        "text": format!(
+          "Pesquise na web sobre: {}. Retorne um resumo factual e curto, preservando datas e nomes importantes.",
+          query
+        )
+      }]
+    }],
+    "tools": [{ "googleSearch": {} }],
+    "generationConfig": {
+      "maxOutputTokens": 2500,
+      "temperature": 0.2,
+      "topP": 0.9
+    }
+  });
+
+  let response = client
+    .post(format!(
+      "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+      model
+    ))
+    .header("Content-Type", "application/json")
+    .header("x-goog-api-key", api_key)
+    .json(&body)
+    .send()
+    .await
+    .map_err(|_| "Não foi possível executar a pesquisa web.".to_string())?;
+
+  let status = response.status();
+  if !status.is_success() {
+    return Err(format!("Pesquisa web HTTP {}", status.as_u16()));
+  }
+
+  let body = response
+    .json::<Value>()
+    .await
+    .map_err(|_| "Resposta inválida da pesquisa web.".to_string())?;
+
+  let candidate = body
+    .get("candidates")
+    .and_then(Value::as_array)
+    .and_then(|items| items.first())
+    .cloned()
+    .ok_or_else(|| "A pesquisa web não retornou conteúdo.".to_string())?;
+
+  let answer = candidate
+    .get("content")
+    .and_then(|content| content.get("parts"))
+    .and_then(Value::as_array)
+    .map(|parts| {
+      parts
+        .iter()
+        .filter_map(|part| part.get("text").and_then(Value::as_str))
+        .collect::<String>()
+    })
+    .unwrap_or_default();
+
+  let sources = candidate
+    .get("groundingMetadata")
+    .and_then(|metadata| metadata.get("groundingChunks"))
+    .and_then(Value::as_array)
+    .map(|chunks| {
+      chunks
+        .iter()
+        .filter_map(|chunk| chunk.get("web"))
+        .filter_map(|web| {
+          let uri = web.get("uri").and_then(Value::as_str)?;
+          let title = web.get("title").and_then(Value::as_str).unwrap_or(uri);
+          Some(json!({ "title": title, "url": uri }))
+        })
+        .take(8)
+        .collect::<Vec<_>>()
+    })
+    .unwrap_or_default();
+
+  if answer.trim().is_empty() {
+    return Err("A pesquisa web não retornou texto.".to_string());
+  }
+
+  Ok(json!({
+    "query": query,
+    "answer": answer.trim(),
+    "sources": sources
+  }))
+}
+
+async fn execute_desktop_tool(
+  name: &str,
+  args: &Value,
+  client: &reqwest::Client,
+  api_key: &str,
+  model: &str,
+) -> (Value, ZenoToolEvent) {
   match name {
+    "web_search" => match execute_web_search(client, api_key, model, args).await {
+      Ok(response) => (
+        response,
+        ZenoToolEvent {
+          name: name.to_string(),
+          label: "Pesquisa web".to_string(),
+          ok: true,
+          detail: args
+            .get("query")
+            .and_then(Value::as_str)
+            .map(ToString::to_string),
+        },
+      ),
+      Err(error) => (
+        json!({ "error": error }),
+        ZenoToolEvent {
+          name: name.to_string(),
+          label: "Pesquisa web".to_string(),
+          ok: false,
+          detail: Some(error),
+        },
+      ),
+    },
     "desktop_roots" => {
       let roots = existing_allowed_roots();
       (
@@ -289,7 +435,7 @@ async fn gemini_request(
   let body = json!({
     "systemInstruction": { "parts": [{ "text": system_instruction }] },
     "contents": contents,
-    "tools": gemini_tools(),
+    "tools": gemini_function_tools(),
     "generationConfig": {
       "maxOutputTokens": 8192,
       "temperature": 0.65,
@@ -333,11 +479,13 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
     .map(|message| message.content.trim())
     .unwrap_or("");
 
+  let skills = request.skills.unwrap_or_default();
+
   if latest.is_empty() {
     return Ok(ZenoAgentResult {
       ok: false,
       answer: None,
-      skills: request.skills.unwrap_or_default(),
+      skills,
       tools: Vec::new(),
       error: Some("Mensagem vazia.".to_string()),
     });
@@ -373,7 +521,7 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
     return Ok(ZenoAgentResult {
       ok: false,
       answer: None,
-      skills: request.skills.unwrap_or_default(),
+      skills,
       tools: Vec::new(),
       error: Some("Solicitação bloqueada por segurança.".to_string()),
     });
@@ -413,7 +561,7 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
       return Ok(ZenoAgentResult {
         ok: false,
         answer: None,
-        skills: request.skills.unwrap_or_default(),
+        skills,
         tools: tool_events,
         error: Some("O Gemini não retornou conteúdo.".to_string()),
       });
@@ -430,7 +578,7 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
           "Não posso atender a esse pedido dessa forma. Posso ajudar com uma versão segura da solicitação."
             .to_string(),
         ),
-        skills: request.skills.unwrap_or_default(),
+        skills,
         tools: tool_events,
         error: None,
       });
@@ -447,13 +595,14 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
       .cloned()
       .unwrap_or_default();
 
-    let calls: Vec<(String, Value)> = parts
+    let calls: Vec<(Option<String>, String, Value)> = parts
       .iter()
       .filter_map(|part| part.get("functionCall"))
       .filter_map(|call| {
         let name = call.get("name")?.as_str()?.to_string();
+        let id = call.get("id").and_then(Value::as_str).map(ToString::to_string);
         let args = call.get("args").cloned().unwrap_or_else(|| json!({}));
-        Some((name, args))
+        Some((id, name, args))
       })
       .collect();
 
@@ -469,7 +618,7 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
         return Ok(ZenoAgentResult {
           ok: false,
           answer: None,
-          skills: request.skills.unwrap_or_default(),
+          skills,
           tools: tool_events,
           error: Some("O Gemini não retornou texto.".to_string()),
         });
@@ -478,7 +627,7 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
       return Ok(ZenoAgentResult {
         ok: true,
         answer: Some(answer),
-        skills: request.skills.unwrap_or_default(),
+        skills,
         tools: tool_events,
         error: None,
       });
@@ -487,14 +636,27 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
     contents.push(content);
     let mut response_parts = Vec::new();
 
-    for (name, args) in calls {
-      let (response, event) = execute_desktop_tool(&name, &args);
+    for (id, name, args) in calls {
+      let (response, event) = execute_desktop_tool(
+        &name,
+        &args,
+        &client,
+        api_key.trim(),
+        &model,
+      )
+      .await;
       tool_events.push(event);
+
+      let mut function_response = json!({
+        "name": name,
+        "response": response
+      });
+      if let Some(id) = id {
+        function_response["id"] = json!(id);
+      }
+
       response_parts.push(json!({
-        "functionResponse": {
-          "name": name,
-          "response": response
-        }
+        "functionResponse": function_response
       }));
     }
 
@@ -507,7 +669,7 @@ async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
   Ok(ZenoAgentResult {
     ok: false,
     answer: None,
-    skills: request.skills.unwrap_or_default(),
+    skills,
     tools: tool_events,
     error: Some("O agente atingiu o limite de etapas de ferramentas.".to_string()),
   })
