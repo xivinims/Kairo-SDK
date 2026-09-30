@@ -72,11 +72,11 @@ function buildSystemPrompt(latestMessage: string, contentLevel: ZenoContentLevel
     "Acompanhe o idioma do usuário; use português brasileiro quando ele falar português.",
     "Seja direto, útil e preciso. Não encha a resposta com apresentação sobre você mesmo.",
     "Você possui skills e ferramentas. Use ferramentas quando elas forem necessárias para obter dados reais.",
+    "Para informações atuais da web, use a ferramenta web_search em vez de responder de memória.",
     "Nunca diga que executou um comando, abriu um arquivo, acessou GitHub, Drive ou pesquisou algo sem um resultado de ferramenta correspondente.",
     "Quando um conector necessário não estiver disponível, diga exatamente qual conector precisa ser ativado.",
     "Para tarefas complexas, faça planejamento interno e verificação final sem revelar raciocínio privado.",
     "Para programação, preserve a arquitetura existente e entregue mudanças concretas e verificáveis.",
-    "Para pesquisa atual, use a pesquisa web nativa quando disponível e cite as fontes retornadas.",
     "A ferramenta de terminal local existe apenas no aplicativo desktop e só aceita comandos permitidos dentro de pastas autorizadas.",
     `Nível de conteúdo: ${contentLevel}.`,
     `Skills ativas: ${skills.join(", ")}.`,
@@ -84,17 +84,20 @@ function buildSystemPrompt(latestMessage: string, contentLevel: ZenoContentLevel
   ].join("\n");
 }
 
+type GeminiFunctionCall = {
+  id?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+};
+
 type GeminiPart = {
   text?: string;
-  functionCall?: { name?: string; args?: Record<string, unknown> };
+  functionCall?: GeminiFunctionCall;
 };
 
 type GeminiCandidate = {
   finishReason?: string;
   content?: { role?: string; parts?: GeminiPart[] };
-  groundingMetadata?: {
-    groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
-  };
 };
 
 async function callGemini(params: {
@@ -115,10 +118,7 @@ async function callGemini(params: {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: params.systemInstruction }] },
         contents: params.contents,
-        tools: [
-          { googleSearch: {} },
-          { functionDeclarations: ZENO_TOOL_DECLARATIONS },
-        ],
+        tools: [{ functionDeclarations: ZENO_TOOL_DECLARATIONS }],
         generationConfig: {
           maxOutputTokens: 8192,
           temperature: 0.65,
@@ -133,16 +133,6 @@ async function callGemini(params: {
     throw new Error(`gemini-${response.status}:${detail.slice(0, 180)}`);
   }
   return response.json() as Promise<{ candidates?: GeminiCandidate[] }>;
-}
-
-function appendGrounding(answer: string, candidate: GeminiCandidate, latest: string) {
-  const sources = (candidate.groundingMetadata?.groundingChunks ?? [])
-    .map((chunk) => chunk.web?.uri && chunk.web.title ? `[${chunk.web.title}](${chunk.web.uri})` : null)
-    .filter((value): value is string => Boolean(value));
-
-  if (!sources.length || !/(pesquis|not[ií]cia|atual|fonte|hoje|agora|web)/i.test(latest)) return answer;
-  const unique = [...new Set(sources)].slice(0, 6);
-  return `${answer}\n\n**Fontes**\n${unique.map((source) => `- ${source}`).join("\n")}`;
 }
 
 async function generateWithGemini(
@@ -175,23 +165,28 @@ async function generateWithGemini(
     const parts = candidate.content?.parts ?? [];
     const calls = parts
       .map((part) => part.functionCall)
-      .filter((call): call is NonNullable<GeminiPart["functionCall"]> => Boolean(call?.name));
+      .filter((call): call is GeminiFunctionCall => Boolean(call?.name));
 
     if (!calls.length) {
       const answer = parts.map((part) => part.text ?? "").join("").trim();
       if (!answer) throw new Error("empty");
-      return { answer: appendGrounding(answer, candidate, latest), toolEvents };
+      return { answer, toolEvents };
     }
 
     contents.push(candidate.content ?? { role: "model", parts });
-    const responseParts = [];
+    const responseParts: Array<{ functionResponse: { id?: string; name: string; response: unknown } }> = [];
 
     for (const call of calls) {
       const name = call.name!;
-      const execution = await executeZenoTool(name, call.args ?? {}, connectors);
+      const execution = await executeZenoTool(name, call.args ?? {}, {
+        apiKey,
+        model,
+        connectors,
+      });
       toolEvents.push(execution.event);
       responseParts.push({
         functionResponse: {
+          ...(call.id ? { id: call.id } : {}),
           name,
           response: execution.response,
         },
@@ -282,7 +277,7 @@ export function getZenoCapabilities() {
   return {
     modelProvider: "Gemini",
     byok: true,
-    nativeWebSearch: true,
+    webSearchTool: true,
     skills: true,
     githubConnector: true,
     googleDriveConnector: true,
