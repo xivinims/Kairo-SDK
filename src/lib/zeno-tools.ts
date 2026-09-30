@@ -10,7 +10,24 @@ export interface ZenoToolEvent {
   detail?: string;
 }
 
+export interface ZenoToolRuntime {
+  apiKey: string;
+  model: string;
+  connectors: ZenoConnectorTokens;
+}
+
 export const ZENO_TOOL_DECLARATIONS = [
+  {
+    name: "web_search",
+    description: "Pesquisa a web em tempo real com o Google Search do Gemini e retorna um resumo com fontes.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        query: { type: "STRING", description: "Consulta de pesquisa." },
+      },
+      required: ["query"],
+    },
+  },
   {
     name: "connector_status",
     description: "Verifica quais conectores do usuário estão disponíveis nesta conversa.",
@@ -167,34 +184,84 @@ async function executeGoogleDriveReadText(args: Record<string, unknown>, token: 
   return { fileId, content: truncate(await response.text()) };
 }
 
+async function executeWebSearch(args: Record<string, unknown>, apiKey: string, model: string) {
+  const query = String(args.query ?? "").trim();
+  if (!query) throw new Error("Consulta vazia.");
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      signal: AbortSignal.timeout(45000),
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `Pesquise na web sobre: ${query}. Retorne um resumo factual e curto, preservando datas e nomes importantes.`,
+          }],
+        }],
+        tools: [{ googleSearch: {} }],
+        generationConfig: { maxOutputTokens: 2500, temperature: 0.2, topP: 0.9 },
+      }),
+    },
+  );
+
+  if (!response.ok) throw new Error(`Pesquisa web HTTP ${response.status}`);
+  const body = await response.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> };
+    }>;
+  };
+  const candidate = body.candidates?.[0];
+  const answer = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
+  const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
+    .map((chunk) => chunk.web?.uri && chunk.web.title ? { title: chunk.web.title, url: chunk.web.uri } : null)
+    .filter((value): value is { title: string; url: string } => Boolean(value))
+    .slice(0, 8);
+
+  if (!answer) throw new Error("A pesquisa web não retornou conteúdo.");
+  return { query, answer, sources };
+}
+
 export async function executeZenoTool(
   name: string,
   args: Record<string, unknown>,
-  tokens: ZenoConnectorTokens,
+  runtime: ZenoToolRuntime,
 ): Promise<{ response: unknown; event: ZenoToolEvent }> {
+  const { connectors, apiKey, model } = runtime;
+
   try {
+    if (name === "web_search") {
+      const response = await executeWebSearch(args, apiKey, model);
+      return { response, event: { name, label: "Pesquisa web", ok: true, detail: String(args.query ?? "") } };
+    }
     if (name === "connector_status") {
-      const response = { github: Boolean(tokens.github), google: Boolean(tokens.google), desktopTerminal: false };
+      const response = { github: Boolean(connectors.github), google: Boolean(connectors.google), desktopTerminal: false };
       return { response, event: { name, label: "Conectores", ok: true, detail: "Status verificado" } };
     }
     if (name === "github_read_file") {
-      if (!tokens.github) throw new Error("GitHub não está conectado.");
-      const response = await executeGithubReadFile(args, tokens.github);
+      if (!connectors.github) throw new Error("GitHub não está conectado.");
+      const response = await executeGithubReadFile(args, connectors.github);
       return { response, event: { name, label: "GitHub", ok: true, detail: `Arquivo lido: ${String(args.path)}` } };
     }
     if (name === "github_search_code") {
-      if (!tokens.github) throw new Error("GitHub não está conectado.");
-      const response = await executeGithubSearch(args, tokens.github);
+      if (!connectors.github) throw new Error("GitHub não está conectado.");
+      const response = await executeGithubSearch(args, connectors.github);
       return { response, event: { name, label: "GitHub", ok: true, detail: "Pesquisa de código concluída" } };
     }
     if (name === "google_drive_search") {
-      if (!tokens.google) throw new Error("Google Drive não está conectado.");
-      const response = await executeGoogleDriveSearch(args, tokens.google);
+      if (!connectors.google) throw new Error("Google Drive não está conectado.");
+      const response = await executeGoogleDriveSearch(args, connectors.google);
       return { response, event: { name, label: "Google Drive", ok: true, detail: "Pesquisa concluída" } };
     }
     if (name === "google_drive_read_text") {
-      if (!tokens.google) throw new Error("Google Drive não está conectado.");
-      const response = await executeGoogleDriveReadText(args, tokens.google);
+      if (!connectors.google) throw new Error("Google Drive não está conectado.");
+      const response = await executeGoogleDriveReadText(args, connectors.google);
       return { response, event: { name, label: "Google Drive", ok: true, detail: "Arquivo lido" } };
     }
     throw new Error("Ferramenta desconhecida.");
