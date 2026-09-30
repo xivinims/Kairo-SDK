@@ -1,7 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
-use std::{env, fs, path::{Path, PathBuf}};
+use serde_json::{json, Value};
+use std::{
+  env,
+  fs,
+  path::{Path, PathBuf},
+};
 use tauri::command;
 
 fn allowed_roots() -> Vec<PathBuf> {
@@ -12,6 +17,14 @@ fn allowed_roots() -> Vec<PathBuf> {
     roots.push(home.join("Projects"));
   }
   roots
+}
+
+fn existing_allowed_roots() -> Vec<String> {
+  allowed_roots()
+    .into_iter()
+    .filter(|path| path.exists())
+    .map(|path| path.to_string_lossy().to_string())
+    .collect()
 }
 
 fn canonical_existing(path: &Path) -> Result<PathBuf, String> {
@@ -80,31 +93,33 @@ fn write_file(path: String, content: String) -> Result<(), String> {
   fs::write(p, content).map_err(|e| e.to_string())
 }
 
-#[command]
-fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Result<String, String> {
-  let executable = Path::new(&command)
+fn execute_allowed_command(command: &str, args: &[String], cwd: &str) -> Result<String, String> {
+  let executable = Path::new(command)
     .file_name()
     .and_then(|name| name.to_str())
-    .unwrap_or(&command);
+    .unwrap_or(command);
 
   let allowed = match executable {
     "pwd" => args.is_empty(),
-    "ls" => args.iter().all(|arg| !arg.starts_with('-') || matches!(arg.as_str(), "-a" | "-A" | "-l")),
+    "ls" => args
+      .iter()
+      .all(|arg| !arg.starts_with('-') || matches!(arg.as_str(), "-a" | "-A" | "-l" | "-la" | "-al")),
     "git" => matches!(
       args.first().map(String::as_str),
       Some("status") | Some("diff") | Some("log") | Some("show") | Some("branch") | Some("ls-files")
     ),
     _ => false,
   };
+
   if !allowed {
     return Err(format!("Command not allowed: {}", executable));
   }
 
-  let cwd_path = Path::new(&cwd);
+  let cwd_path = Path::new(cwd);
   require_allowed_path(cwd_path)?;
 
   let output = std::process::Command::new(executable)
-    .args(&args)
+    .args(args)
     .current_dir(cwd_path)
     .output()
     .map_err(|e| e.to_string())?;
@@ -117,115 +132,176 @@ fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Resul
     stdout
   };
 
-  if output.status.success() {
-    Ok(combined)
+  let bounded = if combined.len() > 80_000 {
+    format!("{}\n\n[output truncated]", &combined[..80_000])
   } else {
-    Err(combined)
+    combined
+  };
+
+  if output.status.success() {
+    Ok(bounded)
+  } else {
+    Err(bounded)
   }
 }
 
-#[derive(Debug, Deserialize)]
-struct KairoRequest {
-  messages: Vec<KairoMessage>,
-  #[serde(rename = "contentLevel")]
-  content_level: String,
-  #[serde(rename = "systemInstruction")]
-  system_instruction: String,
+#[command]
+fn run_allowed_command(command: String, args: Vec<String>, cwd: String) -> Result<String, String> {
+  execute_allowed_command(&command, &args, &cwd)
 }
 
 #[derive(Debug, Deserialize)]
-struct KairoMessage {
+struct ZenoRequest {
+  messages: Vec<ZenoMessage>,
+  #[serde(rename = "contentLevel")]
+  content_level: String,
+  #[serde(rename = "apiKey")]
+  api_key: Option<String>,
+  model: Option<String>,
+  #[serde(rename = "systemInstruction")]
+  system_instruction: String,
+  skills: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ZenoMessage {
   role: String,
   content: String,
 }
 
 #[derive(Debug, Serialize)]
-struct KairoAgentResult {
+struct ZenoToolEvent {
+  name: String,
+  label: String,
+  ok: bool,
+  detail: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ZenoAgentResult {
   ok: bool,
   answer: Option<String>,
   skills: Vec<String>,
+  tools: Vec<ZenoToolEvent>,
   error: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct GeminiResponse {
-  candidates: Option<Vec<GeminiCandidate>>,
+fn gemini_tools() -> Value {
+  json!([
+    { "googleSearch": {} },
+    {
+      "functionDeclarations": [
+        {
+          "name": "desktop_roots",
+          "description": "Lista as pastas locais que o Zeno pode acessar no aplicativo desktop.",
+          "parameters": { "type": "OBJECT", "properties": {} }
+        },
+        {
+          "name": "run_local_command",
+          "description": "Executa um comando local permitido dentro de uma pasta autorizada. Comandos permitidos: pwd, ls e operações Git somente de leitura.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "command": { "type": "STRING" },
+              "args": {
+                "type": "ARRAY",
+                "items": { "type": "STRING" }
+              },
+              "cwd": { "type": "STRING" }
+            },
+            "required": ["command", "args", "cwd"]
+          }
+        }
+      ]
+    }
+  ])
 }
 
-#[derive(Debug, Deserialize)]
-struct GeminiCandidate {
-  #[serde(rename = "finishReason")]
-  finish_reason: Option<String>,
-  content: Option<GeminiContent>,
-}
+fn execute_desktop_tool(name: &str, args: &Value) -> (Value, ZenoToolEvent) {
+  match name {
+    "desktop_roots" => {
+      let roots = existing_allowed_roots();
+      (
+        json!({ "roots": roots }),
+        ZenoToolEvent {
+          name: name.to_string(),
+          label: "Pastas locais".to_string(),
+          ok: true,
+          detail: Some("Pastas autorizadas verificadas".to_string()),
+        },
+      )
+    }
+    "run_local_command" => {
+      let command = args.get("command").and_then(Value::as_str).unwrap_or("");
+      let cwd = args.get("cwd").and_then(Value::as_str).unwrap_or("");
+      let command_args = args
+        .get("args")
+        .and_then(Value::as_array)
+        .map(|items| {
+          items
+            .iter()
+            .filter_map(Value::as_str)
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
 
-#[derive(Debug, Deserialize)]
-struct GeminiContent {
-  parts: Option<Vec<GeminiPart>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GeminiPart {
-  text: Option<String>,
-}
-
-#[command]
-async fn ask_kairo(request: KairoRequest) -> Result<KairoAgentResult, String> {
-  let latest = request.messages.last().map(|m| m.content.trim()).unwrap_or("");
-  if latest.is_empty() {
-    return Ok(KairoAgentResult {
-      ok: false,
-      answer: None,
-      skills: Vec::new(),
-      error: Some("Mensagem vazia.".to_string()),
-    });
+      match execute_allowed_command(command, &command_args, cwd) {
+        Ok(output) => (
+          json!({ "output": output }),
+          ZenoToolEvent {
+            name: name.to_string(),
+            label: "Terminal".to_string(),
+            ok: true,
+            detail: Some(format!("{} {}", command, command_args.join(" ")).trim().to_string()),
+          },
+        ),
+        Err(error) => (
+          json!({ "error": error }),
+          ZenoToolEvent {
+            name: name.to_string(),
+            label: "Terminal".to_string(),
+            ok: false,
+            detail: Some(error),
+          },
+        ),
+      }
+    }
+    _ => (
+      json!({ "error": "Unknown desktop tool" }),
+      ZenoToolEvent {
+        name: name.to_string(),
+        label: name.to_string(),
+        ok: false,
+        detail: Some("Ferramenta desconhecida".to_string()),
+      },
+    ),
   }
+}
 
-  let api_key = env::var("GEMINI_API_KEY")
-    .map_err(|_| "GEMINI_API_KEY não está configurada no ambiente do aplicativo.".to_string())?
-    .trim()
-    .to_string();
-
-  let blocked = [
-    "child sexual",
-    "minor sexual",
-    "sexual exploitation",
-    "incest",
-    "bestiality",
-    "forced sex",
-    "rape",
-  ];
-
-  let latest_lower = latest.to_lowercase();
-  if blocked.iter().any(|needle| latest_lower.contains(needle)) {
-    return Ok(KairoAgentResult {
-      ok: false,
-      answer: None,
-      skills: Vec::new(),
-      error: Some("Solicitação bloqueada por segurança.".to_string()),
-    });
-  }
-
-  let contents: Vec<serde_json::Value> = request.messages.iter().map(|message| {
-    serde_json::json!({
-      "role": if message.role == "assistant" { "model" } else { "user" },
-      "parts": [{"text": message.content}]
-    })
-  }).collect();
-
-  let body = serde_json::json!({
-    "systemInstruction": { "parts": [{ "text": request.system_instruction }] },
+async fn gemini_request(
+  client: &reqwest::Client,
+  api_key: &str,
+  model: &str,
+  system_instruction: &str,
+  contents: &[Value],
+) -> Result<Value, String> {
+  let body = json!({
+    "systemInstruction": { "parts": [{ "text": system_instruction }] },
     "contents": contents,
-    "tools": [{ "googleSearch": {} }],
+    "tools": gemini_tools(),
     "generationConfig": {
-      "maxOutputTokens": 4096,
-      "temperature": 0.7,
+      "maxOutputTokens": 8192,
+      "temperature": 0.65,
       "topP": 0.95
     }
   });
 
-  let response = reqwest::Client::new()
-    .post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent")
+  let response = client
+    .post(format!(
+      "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+      model
+    ))
     .header("Content-Type", "application/json")
     .header("x-goog-api-key", api_key)
     .json(&body)
@@ -235,52 +311,205 @@ async fn ask_kairo(request: KairoRequest) -> Result<KairoAgentResult, String> {
 
   let status = response.status();
   if !status.is_success() {
-    return Ok(KairoAgentResult {
-      ok: false,
-      answer: None,
-      skills: Vec::new(),
-      error: Some(format!("O Gemini retornou HTTP {}.", status.as_u16())),
-    });
+    let detail = response.text().await.unwrap_or_default();
+    return Err(format!(
+      "Gemini HTTP {}: {}",
+      status.as_u16(),
+      detail.chars().take(180).collect::<String>()
+    ));
   }
 
-  let body = response.json::<GeminiResponse>()
+  response
+    .json::<Value>()
     .await
-    .map_err(|_| "Resposta inválida do Gemini.".to_string())?;
+    .map_err(|_| "Resposta inválida do Gemini.".to_string())
+}
 
-  let candidate = body.candidates.and_then(|mut candidates| candidates.drain(..).next());
-  if candidate.as_ref().and_then(|c| c.finish_reason.as_deref()) == Some("SAFETY") {
-    return Ok(KairoAgentResult {
-      ok: true,
-      answer: Some("Não posso atender a esse pedido dessa forma. Posso ajudar com uma versão segura da solicitação.".to_string()),
-      skills: Vec::new(),
-      error: None,
-    });
-  }
+#[command]
+async fn ask_zeno(request: ZenoRequest) -> Result<ZenoAgentResult, String> {
+  let latest = request
+    .messages
+    .last()
+    .map(|message| message.content.trim())
+    .unwrap_or("");
 
-  let answer = candidate
-    .and_then(|candidate| candidate.content)
-    .and_then(|content| content.parts)
-    .unwrap_or_default()
-    .into_iter()
-    .filter_map(|part| part.text)
-    .collect::<String>()
-    .trim()
-    .to_string();
-
-  if answer.is_empty() {
-    return Ok(KairoAgentResult {
+  if latest.is_empty() {
+    return Ok(ZenoAgentResult {
       ok: false,
       answer: None,
-      skills: Vec::new(),
-      error: Some("O Gemini não retornou conteúdo.".to_string()),
+      skills: request.skills.unwrap_or_default(),
+      tools: Vec::new(),
+      error: Some("Mensagem vazia.".to_string()),
     });
   }
 
-  Ok(KairoAgentResult {
-    ok: true,
-    answer: Some(answer),
-    skills: Vec::new(),
-    error: None,
+  let api_key = request
+    .api_key
+    .filter(|key| !key.trim().is_empty())
+    .or_else(|| env::var("GEMINI_API_KEY").ok())
+    .ok_or_else(|| "Adicione sua API key do Gemini nas configurações do Zeno.".to_string())?;
+
+  let model = request
+    .model
+    .unwrap_or_else(|| "gemini-2.5-flash".to_string());
+
+  if !model.starts_with("gemini-")
+    || !model
+      .chars()
+      .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.'))
+  {
+    return Err("Modelo Gemini inválido.".to_string());
+  }
+
+  let blocked = [
+    "child sexual",
+    "minor sexual",
+    "sexual exploitation",
+    "forced sex",
+    "rape",
+  ];
+  let latest_lower = latest.to_lowercase();
+  if blocked.iter().any(|needle| latest_lower.contains(needle)) {
+    return Ok(ZenoAgentResult {
+      ok: false,
+      answer: None,
+      skills: request.skills.unwrap_or_default(),
+      tools: Vec::new(),
+      error: Some("Solicitação bloqueada por segurança.".to_string()),
+    });
+  }
+
+  let mut contents: Vec<Value> = request
+    .messages
+    .iter()
+    .map(|message| {
+      json!({
+        "role": if message.role == "assistant" { "model" } else { "user" },
+        "parts": [{ "text": message.content }]
+      })
+    })
+    .collect();
+
+  let client = reqwest::Client::new();
+  let mut tool_events = Vec::new();
+
+  for _ in 0..6 {
+    let body = gemini_request(
+      &client,
+      api_key.trim(),
+      &model,
+      &request.system_instruction,
+      &contents,
+    )
+    .await?;
+
+    let candidate = body
+      .get("candidates")
+      .and_then(Value::as_array)
+      .and_then(|items| items.first())
+      .cloned();
+
+    let Some(candidate) = candidate else {
+      return Ok(ZenoAgentResult {
+        ok: false,
+        answer: None,
+        skills: request.skills.unwrap_or_default(),
+        tools: tool_events,
+        error: Some("O Gemini não retornou conteúdo.".to_string()),
+      });
+    };
+
+    if candidate
+      .get("finishReason")
+      .and_then(Value::as_str)
+      == Some("SAFETY")
+    {
+      return Ok(ZenoAgentResult {
+        ok: true,
+        answer: Some(
+          "Não posso atender a esse pedido dessa forma. Posso ajudar com uma versão segura da solicitação."
+            .to_string(),
+        ),
+        skills: request.skills.unwrap_or_default(),
+        tools: tool_events,
+        error: None,
+      });
+    }
+
+    let content = candidate.get("content").cloned().unwrap_or_else(|| json!({
+      "role": "model",
+      "parts": []
+    }));
+
+    let parts = content
+      .get("parts")
+      .and_then(Value::as_array)
+      .cloned()
+      .unwrap_or_default();
+
+    let calls: Vec<(String, Value)> = parts
+      .iter()
+      .filter_map(|part| part.get("functionCall"))
+      .filter_map(|call| {
+        let name = call.get("name")?.as_str()?.to_string();
+        let args = call.get("args").cloned().unwrap_or_else(|| json!({}));
+        Some((name, args))
+      })
+      .collect();
+
+    if calls.is_empty() {
+      let answer = parts
+        .iter()
+        .filter_map(|part| part.get("text").and_then(Value::as_str))
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+      if answer.is_empty() {
+        return Ok(ZenoAgentResult {
+          ok: false,
+          answer: None,
+          skills: request.skills.unwrap_or_default(),
+          tools: tool_events,
+          error: Some("O Gemini não retornou texto.".to_string()),
+        });
+      }
+
+      return Ok(ZenoAgentResult {
+        ok: true,
+        answer: Some(answer),
+        skills: request.skills.unwrap_or_default(),
+        tools: tool_events,
+        error: None,
+      });
+    }
+
+    contents.push(content);
+    let mut response_parts = Vec::new();
+
+    for (name, args) in calls {
+      let (response, event) = execute_desktop_tool(&name, &args);
+      tool_events.push(event);
+      response_parts.push(json!({
+        "functionResponse": {
+          "name": name,
+          "response": response
+        }
+      }));
+    }
+
+    contents.push(json!({
+      "role": "user",
+      "parts": response_parts
+    }));
+  }
+
+  Ok(ZenoAgentResult {
+    ok: false,
+    answer: None,
+    skills: request.skills.unwrap_or_default(),
+    tools: tool_events,
+    error: Some("O agente atingiu o limite de etapas de ferramentas.".to_string()),
   })
 }
 
@@ -291,8 +520,8 @@ fn main() {
       read_file,
       write_file,
       run_allowed_command,
-      ask_kairo
+      ask_zeno
     ])
     .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .expect("error while running Zeno");
 }

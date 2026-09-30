@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { KairoAgentApp } from "@/components/kairo-agent-app";
+import { ZenoAgentApp } from "@/components/zeno-agent-app";
 
 export const Route = createFileRoute("/")({
-  component: KairoAgentApp,
+  component: ZenoAgentApp,
 });
