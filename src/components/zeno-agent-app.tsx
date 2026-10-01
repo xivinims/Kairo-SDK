@@ -30,6 +30,7 @@ import {
 import { ZenoWorkspace, type WorkspaceNodeType } from "./zeno-workspace";
 import { askZenoAgent, type ZenoMessage } from "@/lib/zeno-agent";
 import { detectZenoSkills } from "@/lib/zeno-skills";
+import { buildThinkingPreview, streamZenoText } from "@/lib/zeno-stream";
 import {
   connectGitHub,
   connectGoogleWorkspace,
@@ -52,6 +53,8 @@ interface WorkspaceSeed {
   label: string;
 }
 
+const TOOL_SKILLS = new Set(["research", "web", "github", "google", "terminal", "files", "automation"]);
+
 const MODEL_OPTIONS = [
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
@@ -72,6 +75,7 @@ export function ZenoAgentApp() {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [thinkingPreview, setThinkingPreview] = useState("");
   const [error, setError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -148,16 +152,47 @@ export function ZenoAgentApp() {
     if (!messages.length) rememberChat(text);
 
     const nextMessages: UiMessage[] = [...messages, { role: "user", content: text }];
+    const requestMessages = nextMessages.map(({ role, content }) => ({ role, content }));
+    const requestSkills = detectZenoSkills(text);
+    const needsAgentTools = requestSkills.some((skill) => TOOL_SKILLS.has(skill));
+
     setMessages(nextMessages);
     setDraft("");
     setError("");
+    setThinkingPreview("…");
     setSending(true);
     setWorkspaceOpen(false);
 
     try {
+      const canStreamText =
+        import.meta.env.MODE !== "desktop" &&
+        Boolean(apiKey.trim()) &&
+        !needsAgentTools;
+
+      if (canStreamText) {
+        try {
+          const answer = await streamZenoText({
+            messages: requestMessages,
+            apiKey: apiKey.trim(),
+            model,
+            onText: (partialText) => {
+              setThinkingPreview(buildThinkingPreview(partialText));
+            },
+          });
+
+          setMessages((current) => [
+            ...current,
+            { role: "assistant", content: answer },
+          ]);
+          return;
+        } catch {
+          // Se o streaming do navegador não estiver disponível, volta para o runtime normal do agente.
+        }
+      }
+
       const result = await askZenoAgent({
         data: {
-          messages: nextMessages.map(({ role, content }) => ({ role, content })),
+          messages: requestMessages,
           contentLevel: "safe",
           apiKey: apiKey.trim() || undefined,
           model,
@@ -166,6 +201,8 @@ export function ZenoAgentApp() {
       });
 
       if (result.ok && result.answer) {
+        setThinkingPreview(buildThinkingPreview(result.answer));
+        await new Promise((resolve) => window.setTimeout(resolve, 180));
         setMessages((current) => [
           ...current,
           { role: "assistant", content: result.answer!, tools: result.tools },
@@ -178,6 +215,7 @@ export function ZenoAgentApp() {
       setError("Não foi possível conectar ao Zeno agora.");
     } finally {
       setSending(false);
+      setThinkingPreview("");
     }
   }
 
@@ -363,14 +401,8 @@ export function ZenoAgentApp() {
                 ))}
 
                 {sending && (
-                  <div className="message-row assistant">
-                    <div className="assistant-star is-thinking" />
-                    <div className="thinking-line">
-                      <span />
-                      <span />
-                      <span />
-                      Zeno está trabalhando
-                    </div>
+                  <div className="thinking-text-row" aria-live="polite">
+                    <span className="thinking-text-preview">{thinkingPreview || "…"}</span>
                   </div>
                 )}
               </div>
