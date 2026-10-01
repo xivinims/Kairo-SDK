@@ -245,7 +245,6 @@ export function ZenoAgentApp() {
           section={sidebarSection}
           onModeChange={setSidebarMode}
           onSectionChange={setSidebarSection}
-          onNewChat={newChat}
           onOpenWorkspace={() => openWorkspace()}
           onPickFile={openWorkspace}
           onSettings={() => setSettingsOpen(true)}
@@ -261,7 +260,6 @@ export function ZenoAgentApp() {
             section={sidebarSection}
             onModeChange={setSidebarMode}
             onSectionChange={setSidebarSection}
-            onNewChat={newChat}
             onOpenWorkspace={() => openWorkspace()}
             onPickFile={openWorkspace}
             onSettings={() => {
@@ -389,7 +387,9 @@ export function ZenoAgentApp() {
                 className="composer-plus"
                 onClick={() => {
                   setSidebarMode("files");
-                  setMobileSidebar(true);
+                  if (typeof window !== "undefined" && window.innerWidth <= 900) {
+                    setMobileSidebar(true);
+                  }
                 }}
                 aria-label="Adicionar"
               >
