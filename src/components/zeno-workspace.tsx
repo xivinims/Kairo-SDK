@@ -91,13 +91,33 @@ function iconFor(type: WorkspaceNodeType) {
 }
 
 export function ZenoWorkspace({
+  initialNode,
   onClose,
   onUseInChat,
 }: {
+  initialNode?: { type: WorkspaceNodeType; title: string };
   onClose: () => void;
   onUseInChat: (text: string) => void;
 }) {
-  const [nodes, setNodes] = useState<WorkspaceNode[]>(starterNodes);
+  const [nodes, setNodes] = useState<WorkspaceNode[]>(() => {
+    if (!initialNode) return starterNodes;
+    const imported: WorkspaceNode = {
+      id: id("imported"),
+      type: initialNode.type,
+      title: initialNode.title,
+      content:
+        initialNode.type === "code"
+          ? "// Abra este bloco e cole ou importe seu código."
+          : initialNode.type === "image"
+            ? "Imagem"
+            : "Adicione conteúdo a este arquivo.",
+      x: 185,
+      y: 150,
+      width: initialNode.type === "code" ? 360 : 300,
+      height: initialNode.type === "image" ? 330 : 210,
+    };
+    return [imported, ...starterNodes.map((node) => ({ ...node, x: node.x + 170 }))];
+  });
   const [connections, setConnections] = useState<Connection[]>([
     { id: "c1", from: "config", to: "prompt" },
     { id: "c2", from: "prompt", to: "code" },
