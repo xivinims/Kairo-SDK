@@ -15,6 +15,11 @@ Zeno é um agente de IA construído sobre Gemini com BYOK, skills e ferramentas 
 - Terminal local restrito no aplicativo Tauri.
 - Tokens de conectores mantidos somente durante a sessão do navegador.
 - Layout responsivo e input com 16px para evitar zoom automático no iPhone.
+- Interface escura inspirada na referência do Zeno: sidebar, seletor de modelo, hero central e composer flutuante.
+- Sidebar com painéis exclusivos de Histórico e Arquivos: abrir um fecha o outro.
+- Workspace visual em canvas com blocos arrastáveis de texto, prompt, código e imagem.
+- Upload local de imagens e arquivos de código/texto para o canvas.
+- Conexões visuais entre blocos, duplicação, remoção e envio do conteúdo selecionado para o chat.
 
 ## Configuração
 
@@ -68,7 +73,8 @@ No desktop, a ferramenta de terminal é propositalmente limitada a pastas autori
 ## Arquitetura
 
 - `src/components/zeno-agent-app.tsx`: interface principal.
-- `src/components/zeno-home.tsx`: sidebar.
+- `src/components/zeno-home.tsx`: sidebar com histórico/arquivos.
+- `src/components/zeno-workspace.tsx`: canvas visual arrastável para arquivos, código e imagens.
 - `src/lib/zeno-agent.ts`: runtime do agente e loop do Gemini.
 - `src/lib/zeno-skills.ts`: skills e detecção.
 - `src/lib/zeno-tools.ts`: ferramentas GitHub/Google.
