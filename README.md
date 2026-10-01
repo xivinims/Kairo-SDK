@@ -19,7 +19,9 @@ Zeno é um agente de IA construído sobre Gemini com BYOK, skills e ferramentas 
 - Sidebar com painéis exclusivos de Histórico e Arquivos: abrir um fecha o outro.
 - Workspace visual em canvas com blocos arrastáveis de texto, prompt, código e imagem.
 - Upload local de imagens e arquivos de código/texto para o canvas.
-- Conexões visuais entre blocos, duplicação, remoção e envio do conteúdo selecionado para o chat.
+- Workspace visual simplificado: os cards servem para mover e organizar conteúdo livremente, sem botões de ação em volta de imagens/cards.
+- Botão global “Pedir ajuda” envia o contexto organizado do workspace para o chat.
+- Respostas de texto podem usar streaming do Gemini; enquanto gera, a UI mostra somente um preview curto do começo da resposta, como `Textooooo…`, sem exibir raciocínio interno.
 
 ## Configuração
 
