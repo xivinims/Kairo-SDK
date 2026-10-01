@@ -65,7 +65,7 @@ function validateMessages(messages: ZenoMessage[]) {
   return null;
 }
 
-function buildSystemPrompt(latestMessage: string, contentLevel: ZenoContentLevel) {
+export function buildZenoSystemPrompt(latestMessage: string, contentLevel: ZenoContentLevel) {
   const skills = detectZenoSkills(latestMessage);
   return [
     "Você é Zeno, um agente de IA geral, técnico e criativo.",
@@ -143,7 +143,7 @@ async function generateWithGemini(
   connectors: ZenoConnectorTokens,
 ) {
   const latest = messages[messages.length - 1]?.content ?? "";
-  const systemInstruction = buildSystemPrompt(latest, contentLevel);
+  const systemInstruction = buildZenoSystemPrompt(latest, contentLevel);
   const contents: unknown[] = messages.map((message) => ({
     role: message.role === "assistant" ? "model" : "user",
     parts: [{ text: message.content }],
@@ -256,7 +256,7 @@ export async function askZenoAgent(input: { data: ZenoRequestData }): Promise<Ze
           contentLevel: input.data.contentLevel,
           apiKey: input.data.apiKey,
           model: input.data.model ?? "gemini-2.5-flash",
-          systemInstruction: buildSystemPrompt(latest, input.data.contentLevel),
+          systemInstruction: buildZenoSystemPrompt(latest, input.data.contentLevel),
           skills,
         },
       });
