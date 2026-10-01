@@ -2,22 +2,32 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   ArrowUp,
+  AudioLines,
   Check,
   ChevronDown,
   Github,
   KeyRound,
+  LayoutGrid,
   Menu,
+  Mic,
   Paperclip,
+  PencilLine,
   Plug,
+  Plus,
   Settings,
-  Sparkles,
   Unplug,
   UserRound,
   Wrench,
   X,
 } from "lucide-react";
 import { Markdown } from "./markdown";
-import { ZenoSidebar, type ZenoRecentChat } from "./zeno-home";
+import {
+  ZenoSidebar,
+  type ZenoRecentChat,
+  type ZenoSidebarMode,
+  type ZenoSidebarSection,
+} from "./zeno-home";
+import { ZenoWorkspace, type WorkspaceNodeType } from "./zeno-workspace";
 import { askZenoAgent, type ZenoMessage } from "@/lib/zeno-agent";
 import { detectZenoSkills } from "@/lib/zeno-skills";
 import {
@@ -36,7 +46,11 @@ interface UiMessage extends ZenoMessage {
   tools?: ZenoToolEvent[];
 }
 
-const PLACEHOLDER_RECENT: ZenoRecentChat[] = [];
+interface WorkspaceSeed {
+  id: number;
+  type: WorkspaceNodeType;
+  label: string;
+}
 
 const MODEL_OPTIONS = [
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
@@ -44,12 +58,15 @@ const MODEL_OPTIONS = [
   { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
 ];
 
-const STARTERS = [
-  "Analise meu projeto e diga o próximo passo",
-  "Pesquise isso na web e traga as fontes",
-  "Leia um arquivo do meu GitHub",
-  "Encontre um documento no meu Google Drive",
-];
+function loadRecentChats(): ZenoRecentChat[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem("zeno.recentChats") ?? "[]") as ZenoRecentChat[];
+    return Array.isArray(parsed) ? parsed.slice(0, 30) : [];
+  } catch {
+    return [];
+  }
+}
 
 export function ZenoAgentApp() {
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -58,12 +75,17 @@ export function ZenoAgentApp() {
   const [error, setError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileSidebar, setMobileSidebar] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<ZenoSidebarMode>("chats");
+  const [sidebarSection, setSidebarSection] = useState<ZenoSidebarSection>("dashboard");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspaceSeed, setWorkspaceSeed] = useState<WorkspaceSeed | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gemini-2.5-flash");
   const [user, setUser] = useState<ZenoUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [connectorState, setConnectorState] = useState(() => getConnectorState());
   const [connectorBusy, setConnectorBusy] = useState<"google" | "github" | "">("");
+  const [recentChats, setRecentChats] = useState<ZenoRecentChat[]>([]);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const activeSkills = useMemo(() => detectZenoSkills(draft), [draft]);
@@ -72,23 +94,40 @@ export function ZenoAgentApp() {
   useEffect(() => {
     setApiKey(localStorage.getItem("zeno.gemini.apiKey") ?? "");
     setModel(localStorage.getItem("zeno.gemini.model") ?? "gemini-2.5-flash");
+    setRecentChats(loadRecentChats());
 
     let stop = () => {};
     void subscribeZenoAuth((nextUser) => {
       setUser(nextUser);
       setAuthReady(true);
-    }).then((unsubscribe) => {
-      stop = unsubscribe;
-      setAuthReady(true);
-    }).catch(() => setAuthReady(true));
+    })
+      .then((unsubscribe) => {
+        stop = unsubscribe;
+        setAuthReady(true);
+      })
+      .catch(() => setAuthReady(true));
 
     return () => stop();
   }, []);
 
   useEffect(() => {
+    if (workspaceOpen) return;
     const node = scrollerRef.current;
     if (node) node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
-  }, [messages, sending]);
+  }, [messages, sending, workspaceOpen]);
+
+  function rememberChat(title: string) {
+    const next: ZenoRecentChat[] = [
+      {
+        id: `chat-${Date.now()}`,
+        title: title.slice(0, 52),
+        group: "Hoje",
+      },
+      ...recentChats,
+    ].slice(0, 30);
+    setRecentChats(next);
+    localStorage.setItem("zeno.recentChats", JSON.stringify(next));
+  }
 
   function saveApiKey(value: string) {
     setApiKey(value);
@@ -106,11 +145,14 @@ export function ZenoAgentApp() {
     const text = draft.trim();
     if (!text || sending) return;
 
+    if (!messages.length) rememberChat(text);
+
     const nextMessages: UiMessage[] = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
     setDraft("");
     setError("");
     setSending(true);
+    setWorkspaceOpen(false);
 
     try {
       const result = await askZenoAgent({
@@ -143,7 +185,27 @@ export function ZenoAgentApp() {
     setMessages([]);
     setDraft("");
     setError("");
+    setWorkspaceOpen(false);
+    setSidebarSection("dashboard");
+    setSidebarMode("chats");
     setMobileSidebar(false);
+  }
+
+  function openWorkspace(seed?: { label: string; type: "code" | "image" | "text" | "folder" }) {
+    setWorkspaceOpen(true);
+    setMobileSidebar(false);
+    if (seed && seed.type !== "folder") {
+      setWorkspaceSeed({
+        id: Date.now(),
+        label: seed.label,
+        type: seed.type === "image" ? "image" : seed.type === "code" ? "code" : "text",
+      });
+    }
+  }
+
+  function useWorkspaceText(text: string) {
+    setDraft((current) => (current.trim() ? `${current}\n\n${text}` : text));
+    setWorkspaceOpen(false);
   }
 
   async function handleGoogleLogin() {
@@ -176,10 +238,16 @@ export function ZenoAgentApp() {
 
   return (
     <div className="zeno-app">
-      <div className="hidden lg:block">
+      <div className="desktop-sidebar">
         <ZenoSidebar
-          recent={PLACEHOLDER_RECENT}
+          recent={recentChats}
+          mode={sidebarMode}
+          section={sidebarSection}
+          onModeChange={setSidebarMode}
+          onSectionChange={setSidebarSection}
           onNewChat={newChat}
+          onOpenWorkspace={() => openWorkspace()}
+          onPickFile={openWorkspace}
           onSettings={() => setSettingsOpen(true)}
         />
       </div>
@@ -188,8 +256,14 @@ export function ZenoAgentApp() {
         <div className="mobile-sidebar-layer">
           <button className="mobile-sidebar-backdrop" onClick={() => setMobileSidebar(false)} aria-label="Fechar menu" />
           <ZenoSidebar
-            recent={PLACEHOLDER_RECENT}
+            recent={recentChats}
+            mode={sidebarMode}
+            section={sidebarSection}
+            onModeChange={setSidebarMode}
+            onSectionChange={setSidebarSection}
             onNewChat={newChat}
+            onOpenWorkspace={() => openWorkspace()}
+            onPickFile={openWorkspace}
             onSettings={() => {
               setMobileSidebar(false);
               setSettingsOpen(true);
@@ -200,17 +274,35 @@ export function ZenoAgentApp() {
       )}
 
       <section className="zeno-main">
+        <div className="zeno-background-glow" />
+
         <header className="zeno-topbar">
-          <button type="button" className="icon-button lg:hidden" onClick={() => setMobileSidebar(true)} aria-label="Abrir menu">
+          <button type="button" className="topbar-menu-button" onClick={() => setMobileSidebar(true)} aria-label="Abrir menu">
             <Menu size={20} />
           </button>
 
+          <strong className="topbar-brand">Zeno</strong>
+
           <button type="button" className="model-button" onClick={() => setSettingsOpen(true)}>
             <span>{currentModel.label}</span>
-            <ChevronDown size={14} />
+            <ChevronDown size={15} />
           </button>
 
           <div className="topbar-spacer" />
+
+          <button type="button" className="topbar-action" onClick={newChat} aria-label="Nova conversa" title="Nova conversa">
+            <PencilLine size={20} />
+          </button>
+
+          <button
+            type="button"
+            className={workspaceOpen ? "topbar-action is-active" : "topbar-action"}
+            onClick={() => setWorkspaceOpen((current) => !current)}
+            aria-label="Workspace"
+            title="Workspace"
+          >
+            <LayoutGrid size={19} />
+          </button>
 
           {authReady && user ? (
             <button type="button" className="avatar-button" onClick={() => setSettingsOpen(true)} title={user.email ?? "Conta Google"}>
@@ -219,106 +311,135 @@ export function ZenoAgentApp() {
           ) : (
             <button
               type="button"
-              className="google-login-button"
+              className="avatar-button avatar-letter"
               onClick={handleGoogleLogin}
               disabled={!authReady || !isFirebaseConfigured()}
+              title="Entrar com Google"
             >
-              Entrar com Google
+              M
             </button>
           )}
         </header>
 
-        <div className="zeno-scroll no-scrollbar" ref={scrollerRef}>
-          {messages.length === 0 ? (
-            <div className="zeno-welcome">
-              <div className="hero-mark"><Sparkles size={25} /></div>
-              <h1>Como posso ajudar?</h1>
-              <p>
-                Zeno usa Gemini, skills e ferramentas reais quando você conecta suas contas.
-              </p>
-              <div className="starter-grid">
-                {STARTERS.map((prompt) => (
-                  <button key={prompt} type="button" onClick={() => setDraft(prompt)}>
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="message-list">
-              {messages.map((message, index) => (
-                <article key={index} className={message.role === "user" ? "message-row user" : "message-row assistant"}>
-                  {message.role === "assistant" && <div className="assistant-mark"><Sparkles size={15} /></div>}
-                  <div className={message.role === "user" ? "user-bubble" : "assistant-body"}>
-                    {message.role === "assistant" && message.tools?.length ? (
-                      <div className="tool-events">
-                        {message.tools.map((tool, toolIndex) => (
-                          <div key={`${tool.name}-${toolIndex}`} className={tool.ok ? "tool-event" : "tool-event failed"}>
-                            <Wrench size={13} />
-                            <span>{tool.label}</span>
-                            {tool.detail && <small>{tool.detail}</small>}
-                            {tool.ok ? <Check size={13} /> : <X size={13} />}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    {message.role === "user" ? (
-                      <p>{message.content}</p>
-                    ) : (
-                      <Markdown text={message.content} className="zeno-markdown" />
-                    )}
-                  </div>
-                </article>
-              ))}
-
-              {sending && (
-                <div className="message-row assistant">
-                  <div className="assistant-mark is-thinking"><Sparkles size={15} /></div>
-                  <div className="thinking-line">
-                    <span />
-                    <span />
-                    <span />
-                    Zeno está trabalhando
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="composer-zone">
-          {error && <div className="zeno-error">{error}</div>}
-          <form onSubmit={send} className="zeno-composer">
-            <textarea
-              value={draft}
-              disabled={sending}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  void send();
-                }
-              }}
-              rows={1}
-              placeholder="Peça qualquer coisa ao Zeno"
+        {workspaceOpen ? (
+          <div className="workspace-shell">
+            <ZenoWorkspace
+              key={workspaceSeed?.id ?? "workspace"}
+              initialNode={workspaceSeed ? { type: workspaceSeed.type, title: workspaceSeed.label } : undefined}
+              onClose={() => setWorkspaceOpen(false)}
+              onUseInChat={useWorkspaceText}
             />
-            <div className="composer-bottom">
-              <div className="composer-left">
-                <button type="button" className="composer-icon" aria-label="Anexar arquivo" title="Anexos entram na próxima etapa">
-                  <Paperclip size={18} />
-                </button>
-                <button type="button" className="tool-chip" onClick={() => setSettingsOpen(true)}>
-                  <Wrench size={14} />
-                  {activeSkills.length > 1 ? `${activeSkills.length} skills` : activeSkills[0] === "general" ? "Ferramentas" : activeSkills[0]}
-                </button>
+          </div>
+        ) : (
+          <div className="zeno-scroll no-scrollbar" ref={scrollerRef}>
+            {messages.length === 0 ? (
+              <div className="zeno-welcome">
+                <div className="gemini-star" aria-hidden="true" />
+                <h1>Por onde<br />começamos?</h1>
               </div>
-              <button type="submit" className="send-button" disabled={!draft.trim() || sending} aria-label="Enviar">
-                <ArrowUp size={18} />
+            ) : (
+              <div className="message-list">
+                {messages.map((message, index) => (
+                  <article key={index} className={message.role === "user" ? "message-row user" : "message-row assistant"}>
+                    {message.role === "assistant" && <div className="assistant-star" />}
+                    <div className={message.role === "user" ? "user-bubble" : "assistant-body"}>
+                      {message.role === "assistant" && message.tools?.length ? (
+                        <div className="tool-events">
+                          {message.tools.map((tool, toolIndex) => (
+                            <div key={`${tool.name}-${toolIndex}`} className={tool.ok ? "tool-event" : "tool-event failed"}>
+                              <Wrench size={13} />
+                              <span>{tool.label}</span>
+                              {tool.detail && <small>{tool.detail}</small>}
+                              {tool.ok ? <Check size={13} /> : <X size={13} />}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {message.role === "user" ? (
+                        <p>{message.content}</p>
+                      ) : (
+                        <Markdown text={message.content} className="zeno-markdown" />
+                      )}
+                    </div>
+                  </article>
+                ))}
+
+                {sending && (
+                  <div className="message-row assistant">
+                    <div className="assistant-star is-thinking" />
+                    <div className="thinking-line">
+                      <span />
+                      <span />
+                      <span />
+                      Zeno está trabalhando
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!workspaceOpen && (
+          <div className="composer-zone">
+            {error && <div className="zeno-error">{error}</div>}
+            <form onSubmit={send} className="zeno-composer">
+              <button
+                type="button"
+                className="composer-plus"
+                onClick={() => {
+                  setSidebarMode("files");
+                  setMobileSidebar(true);
+                }}
+                aria-label="Adicionar"
+              >
+                <Plus size={24} />
+              </button>
+
+              <textarea
+                value={draft}
+                disabled={sending}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void send();
+                  }
+                }}
+                rows={1}
+                placeholder="Peça ao Zeno..."
+              />
+
+              <button type="button" className="composer-mic" aria-label="Microfone">
+                <Mic size={20} />
+              </button>
+
+              <button
+                type="submit"
+                className="composer-primary"
+                disabled={sending || (!draft.trim() && !messages.length)}
+                aria-label={draft.trim() ? "Enviar" : "Voz"}
+              >
+                {draft.trim() ? <ArrowUp size={21} /> : <AudioLines size={22} />}
+              </button>
+            </form>
+
+            <div className="composer-quick-tools">
+              <button type="button" onClick={() => setSettingsOpen(true)}>
+                <Wrench size={13} />
+                {activeSkills.length > 1 ? `${activeSkills.length} skills` : "Ferramentas"}
+              </button>
+              <button type="button" onClick={() => openWorkspace()}>
+                <LayoutGrid size={13} />
+                Workspace
+              </button>
+              <button type="button" onClick={() => setSidebarMode("files")}>
+                <Paperclip size={13} />
+                Arquivos
               </button>
             </div>
-          </form>
-          <p className="composer-note">Zeno pode errar. Revise informações importantes.</p>
-        </div>
+          </div>
+        )}
       </section>
 
       {settingsOpen && (
@@ -328,9 +449,9 @@ export function ZenoAgentApp() {
             <div className="settings-head">
               <div>
                 <h2>Configurações</h2>
-                <p>Modelo, conta e ferramentas do Zeno.</p>
+                <p>Modelo, conta, conectores e ferramentas.</p>
               </div>
-              <button type="button" className="icon-button" onClick={() => setSettingsOpen(false)} aria-label="Fechar">
+              <button type="button" className="settings-close" onClick={() => setSettingsOpen(false)} aria-label="Fechar">
                 <X size={19} />
               </button>
             </div>
@@ -354,7 +475,7 @@ export function ZenoAgentApp() {
                 </select>
               </label>
               <p className="settings-help">
-                A chave fica salva apenas neste navegador e é enviada ao backend do Zeno somente para chamar o Gemini.
+                A chave fica no navegador e é enviada ao backend apenas quando o Zeno usa o Gemini.
               </p>
             </section>
 
@@ -375,7 +496,7 @@ export function ZenoAgentApp() {
                 </button>
               )}
               {!isFirebaseConfigured() && (
-                <p className="settings-help">Preencha as variáveis VITE_FIREBASE_* para ativar o Google Auth.</p>
+                <p className="settings-help">Configure VITE_FIREBASE_* para ativar o Google Auth.</p>
               )}
             </section>
 
@@ -386,7 +507,7 @@ export function ZenoAgentApp() {
                 <div className="connector-icon google">G</div>
                 <div className="connector-copy">
                   <strong>Google Drive</strong>
-                  <span>Permite ao Zeno pesquisar e ler seus arquivos quando você pedir.</span>
+                  <span>Pesquisa e leitura de arquivos quando você pedir.</span>
                 </div>
                 {connectorState.google ? (
                   <button type="button" className="disconnect-button" onClick={() => disconnect("google")}><Unplug size={14} /> Desconectar</button>
@@ -401,7 +522,7 @@ export function ZenoAgentApp() {
                 <div className="connector-icon"><Github size={18} /></div>
                 <div className="connector-copy">
                   <strong>GitHub</strong>
-                  <span>Permite pesquisar código e ler arquivos de repositórios autorizados.</span>
+                  <span>Pesquisa código e lê arquivos dos repositórios autorizados.</span>
                 </div>
                 {connectorState.github ? (
                   <button type="button" className="disconnect-button" onClick={() => disconnect("github")}><Unplug size={14} /> Desconectar</button>
@@ -411,17 +532,15 @@ export function ZenoAgentApp() {
                   </button>
                 )}
               </div>
-              <p className="settings-help">
-                Os tokens dos conectores ficam somente na sessão do navegador; o Zeno os usa apenas durante a solicitação atual.
-              </p>
             </section>
 
             <section className="settings-section compact">
               <div className="settings-title"><Settings size={16} /> Agente</div>
               <div className="capability-list">
-                <span><Check size={14} /> Pesquisa web nativa</span>
+                <span><Check size={14} /> Pesquisa web</span>
                 <span><Check size={14} /> Skills automáticas</span>
                 <span><Check size={14} /> Loop de ferramentas</span>
+                <span><Check size={14} /> Workspace visual movível</span>
                 <span><Check size={14} /> Terminal restrito no desktop</span>
                 <span><Check size={14} /> GitHub + Google Drive</span>
               </div>
