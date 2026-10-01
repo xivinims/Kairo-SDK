@@ -8,7 +8,7 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" },
       { title: "Zeno" },
       { name: "description", content: "Zeno — agente de IA com skills e ferramentas." },
-      { name: "theme-color", content: "#fbfaf7" },
+      { name: "theme-color", content: "#05070c" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
