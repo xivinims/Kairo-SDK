@@ -18,7 +18,6 @@ import {
   Search,
   Settings,
   Share2,
-  Sparkles,
   Trash2,
   Users,
 } from "lucide-react";
@@ -82,7 +81,6 @@ export function ZenoSidebar({
   section,
   onModeChange,
   onSectionChange,
-  onNewChat,
   onOpenWorkspace,
   onPickFile,
   onSettings,
@@ -93,7 +91,6 @@ export function ZenoSidebar({
   section: ZenoSidebarSection;
   onModeChange: (mode: ZenoSidebarMode) => void;
   onSectionChange: (section: ZenoSidebarSection) => void;
-  onNewChat: () => void;
   onOpenWorkspace: () => void;
   onPickFile: (payload: { label: string; type: "code" | "image" | "text" | "folder" }) => void;
   onSettings: () => void;
@@ -123,21 +120,13 @@ export function ZenoSidebar({
   return (
     <aside className="zeno-sidebar">
       <div className="zeno-sidebar-head">
-        <div className="zeno-sidebar-logo">
-          <Sparkles size={15} />
-          <span>Zeno</span>
-        </div>
+        <span />
         {onClose && (
           <button type="button" className="side-icon-button" onClick={onClose} aria-label="Fechar menu">
             <PanelLeftClose size={18} />
           </button>
         )}
       </div>
-
-      <button type="button" className="sidebar-new-chat" onClick={onNewChat}>
-        <Plus size={16} />
-        Nova conversa
-      </button>
 
       <p className="sidebar-label">MENU PRINCIPAL</p>
       <nav className="sidebar-main-nav">
