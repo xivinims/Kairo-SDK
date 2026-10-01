@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Kairo",
-  "version": "0.1.0",
-  "identifier": "com.kairo.sdk",
+  "productName": "Zeno",
+  "version": "0.2.0",
+  "identifier": "space.kaise.zeno",
   "build": {
     "beforeDevCommand": "npm run dev -- --host 0.0.0.0 --port 8080",
     "beforeBuildCommand": "npm run build:desktop",
@@ -10,9 +10,11 @@
   },
   "app": {
     "windows": [{
-      "title": "Kairo",
+      "title": "Zeno",
       "width": 1400,
       "height": 900,
+      "minWidth": 860,
+      "minHeight": 620,
       "resizable": true,
       "fullscreen": false
     }],

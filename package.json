@@ -1,5 +1,5 @@
 {
-  "name": "kairo-agent",
+  "name": "zeno-agent",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -19,6 +19,7 @@
     "@tanstack/react-start": "^1.168.0",
     "@tauri-apps/api": "^2.5.0",
     "clsx": "^2.1.1",
+    "firebase": "^12.4.0",
     "lucide-react": "^0.510.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

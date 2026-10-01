@@ -1,8 +1,13 @@
 {
-  "name": "Remix Remix kairo-clone",
-  "description": "Imported from GitHub: murilosilvadacosta5ano-dotcom/kairo-clone",
+  "name": "Zeno",
+  "description": "Agente de IA com Gemini BYOK, skills, ferramentas, Google Auth e conectores.",
   "requestFramePermissions": [],
   "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
+    "AGENT_TOOL_LOOP",
+    "GOOGLE_AUTH",
+    "GITHUB_CONNECTOR",
+    "GOOGLE_DRIVE_CONNECTOR",
+    "DESKTOP_TERMINAL"
   ]
 }
