@@ -52,6 +52,7 @@ jobs:
           cp localizations/freetumble/languages.h upstream/src/languages.h
           cp localizations/freetumble/GameMain.cpp upstream/src/gameEngine/GameMain.cpp
           cp localizations/freetumble/GfxEngine.cpp upstream/src/gfxEngine/GfxEngine.cpp
+          sed -i 's/COMPONENTS Audio Graphics System Window/COMPONENTS audio graphics system window/' upstream/CMakeLists.txt
 
       - name: Build Windows x64
         shell: msys2 {0}
