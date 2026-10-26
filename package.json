@@ -14,7 +14,8 @@
     "tauri": "tauri",
     "localize:inspect": "node scripts/kairo-localize.mjs inspect",
     "localize:batch": "node scripts/kairo-localize.mjs batch",
-    "localize:merge": "node scripts/kairo-localize.mjs merge"
+    "localize:merge": "node scripts/kairo-localize.mjs merge",
+    "localize:doctor": "node scripts/kairo-doctor.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
