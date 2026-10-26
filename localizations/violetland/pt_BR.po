@@ -1,0 +1,507 @@
+# Violetland Brazilian Portuguese translation.
+# Translation for Kaise Games.
+# Based on Violetland 0.5 source strings.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Violetland 0.5\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2011-03-29 22:06+0200\n"
+"PO-Revision-Date: 2026-10-26 13:45-0300\n"
+"Last-Translator: Kaise Games\n"
+"Language-Team: Português (Brasil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: ../src/program.cpp:183 ../src/program.cpp:346
+msgid "Please wait..."
+msgstr "Aguarde..."
+
+#: ../src/program.cpp:205
+msgid "Try to survive as long as you can."
+msgstr "Tente sobreviver pelo maior tempo possível."
+
+#: ../src/program.cpp:207
+msgid "Shoot monsters to receive experience and other bonuses."
+msgstr "Derrote monstros para receber experiência e outros bônus."
+
+#: ../src/program.cpp:272
+#, c-format
+msgid "Name found : %s\n"
+msgstr "Nome encontrado: %s\n"
+
+#: ../src/program.cpp:304
+#, c-format
+msgid "Preparing window...\n"
+msgstr "Preparando a janela...\n"
+
+#: ../src/program.cpp:327
+#, c-format
+msgid "Drawing splash screen...\n"
+msgstr "Carregando a tela de abertura...\n"
+
+#: ../src/program.cpp:351
+#, c-format
+msgid "Preparing sound systems...\n"
+msgstr "Preparando o sistema de som...\n"
+
+#: ../src/program.cpp:390
+msgid "You are gobbled up."
+msgstr "Você foi devorado."
+
+#: ../src/program.cpp:423
+#, c-format
+msgid "Current player level: %i"
+msgstr "Nível atual do jogador: %i"
+
+#: ../src/program.cpp:430
+#, c-format
+msgid "Available improvement points: %i"
+msgstr "Pontos de melhoria disponíveis: %i"
+
+#: ../src/program.cpp:437
+#, c-format
+msgid "Strength: %i"
+msgstr "Força: %i"
+
+#: ../src/program.cpp:443
+#, c-format
+msgid "Agility: %i"
+msgstr "Agilidade: %i"
+
+#: ../src/program.cpp:449
+#, c-format
+msgid "Vitality: %i"
+msgstr "Vitalidade: %i"
+
+#: ../src/program.cpp:456
+#, c-format
+msgid "HP: %i / Max HP: %i"
+msgstr "PV: %i / PV máx.: %i"
+
+#: ../src/program.cpp:463
+#, c-format
+msgid "Melee damage: %i"
+msgstr "Dano corpo a corpo: %i"
+
+#: ../src/program.cpp:469
+#, c-format
+msgid "Chance of block: %i%%"
+msgstr "Chance de bloqueio: %i%%"
+
+#: ../src/program.cpp:475
+#, c-format
+msgid "Reloading speed modifier: %i%%"
+msgstr "Modificador de velocidade de recarga: %i%%"
+
+#: ../src/program.cpp:482
+#, c-format
+msgid "Accuracy deviation modifier: %i%%"
+msgstr "Modificador de desvio da precisão: %i%%"
+
+#: ../src/program.cpp:488
+#, c-format
+msgid "Health regeneration: %.2f/min"
+msgstr "Regeneração de vida: %.2f/min"
+
+#: ../src/program.cpp:606
+msgid ""
+"Unstoppable: enemies can't block your movement any more, but they still can "
+"hurt you."
+msgstr ""
+"Imparável: os inimigos não conseguem mais bloquear seu movimento, mas ainda "
+"podem ferir você."
+
+#: ../src/program.cpp:616
+msgid ""
+"Poison bullets: after getting hit by your bullet, enemies slowly lose health "
+"until they die."
+msgstr ""
+"Projéteis venenosos: depois de serem atingidos, os inimigos perdem vida "
+"lentamente até serem derrotados."
+
+#: ../src/program.cpp:626
+msgid "Big calibre: your bullets can wound a few monsters in a row."
+msgstr "Grande calibre: seus disparos podem atingir vários monstros em sequência."
+
+#: ../src/program.cpp:636
+msgid "Telekinesis: useful things slowly move towards you."
+msgstr "Telecinese: itens úteis se movem lentamente em sua direção."
+
+#: ../src/program.cpp:645
+msgid "Night vision: you can see in the dark."
+msgstr "Visão noturna: você consegue enxergar no escuro."
+
+#: ../src/program.cpp:654
+msgid "Looting: Monsters will drop more bonuses."
+msgstr "Saque: os monstros deixarão mais bônus."
+
+#: ../src/program.cpp:664
+msgid "Wide sight: accessible area for action is much more."
+msgstr "Visão ampliada: a área de ação ao seu alcance fica muito maior."
+
+#: ../src/program.cpp:896 ../src/program.cpp:1085
+msgid "Controls"
+msgstr "Controles"
+
+#: ../src/program.cpp:964
+msgid "Press a key, please..."
+msgstr "Pressione uma tecla..."
+
+#: ../src/program.cpp:994
+#, c-format
+msgid "Bind action %s to %s.\n"
+msgstr "Associar a ação %s a %s.\n"
+
+#: ../src/program.cpp:1033 ../src/windows/MainMenuWindow.cpp:20
+msgid "Options"
+msgstr "Opções"
+
+#: ../src/program.cpp:1038
+msgid "Gameplay"
+msgstr "Jogabilidade"
+
+#: ../src/program.cpp:1042
+msgid "Weapon autoreloading"
+msgstr "Recarga automática"
+
+#: ../src/program.cpp:1047
+msgid "Weapon autotaking"
+msgstr "Coleta automática de armas"
+
+#: ../src/program.cpp:1052
+msgid "Friendly fire"
+msgstr "Dano entre aliados"
+
+#: ../src/program.cpp:1058
+msgid "Graphics"
+msgstr "Gráficos"
+
+#: ../src/program.cpp:1062
+msgid "Fullscreen"
+msgstr "Tela cheia"
+
+#: ../src/program.cpp:1066
+msgid "Resolution"
+msgstr "Resolução"
+
+#: ../src/program.cpp:1071
+msgid "Sound"
+msgstr "Som"
+
+#: ../src/program.cpp:1076
+msgid "Sound volume"
+msgstr "Volume dos efeitos"
+
+#: ../src/program.cpp:1080
+msgid "Music volume"
+msgstr "Volume da música"
+
+#: ../src/program.cpp:1089
+msgid "Edit Controls"
+msgstr "Editar controles"
+
+#: ../src/program.cpp:1095
+msgid "Reset Controls"
+msgstr "Restaurar controles"
+
+#: ../src/program.cpp:1114
+msgid "Save and return"
+msgstr "Salvar e voltar"
+
+#: ../src/program.cpp:1144
+msgid "Unknown"
+msgstr "Desconhecido"
+
+#: ../src/program.cpp:1147
+msgid "Violetland Survival"
+msgstr "Sobrevivência em Violetland"
+
+#: ../src/program.cpp:1150
+msgid "Attack waves"
+msgstr "Ondas de ataque"
+
+#: ../src/program.cpp:1213
+msgid "Highscores"
+msgstr "Recordes"
+
+#: ../src/program.cpp:1217
+msgid "XP"
+msgstr "XP"
+
+#: ../src/program.cpp:1220
+msgid "Str/Agil/Vital"
+msgstr "For/Agil/Vit"
+
+#: ../src/program.cpp:1224
+msgid "Time"
+msgstr "Tempo"
+
+#: ../src/program.cpp:1227
+msgid "Name"
+msgstr "Nome"
+
+#: ../src/program.cpp:1276
+msgid "Back to main menu"
+msgstr "Voltar ao menu principal"
+
+#: ../src/program.cpp:1281
+msgid "Reset list"
+msgstr "Limpar lista"
+
+#: ../src/program.cpp:1320
+#, c-format
+msgid ""
+"Hot video mode changing is not supported on windows now. You should restart "
+"the game."
+msgstr ""
+"A alteração do modo de vídeo em tempo real não é suportada no Windows. "
+"Reinicie o jogo para aplicar a mudança."
+
+#: ../src/program.cpp:1611
+msgid "You have reached new level."
+msgstr "Você alcançou um novo nível."
+
+#: ../src/program.cpp:1883
+msgid "Get ready to new wave!"
+msgstr "Prepare-se para a próxima onda!"
+
+#: ../src/program.cpp:2129
+msgid "a medikit"
+msgstr "um kit médico"
+
+#: ../src/program.cpp:2132
+msgid "a nitrogen bomb"
+msgstr "uma bomba de nitrogênio"
+
+#: ../src/program.cpp:2135
+msgid "nuke!"
+msgstr "explosão devastadora!"
+
+#: ../src/program.cpp:2138
+msgid "a hand grenade"
+msgstr "uma granada"
+
+#: ../src/program.cpp:2141
+msgid "penetration bullets"
+msgstr "projéteis perfurantes"
+
+#: ../src/program.cpp:2144
+msgid "vitality boost"
+msgstr "bônus de vitalidade"
+
+#: ../src/program.cpp:2147
+msgid "strength boost"
+msgstr "bônus de força"
+
+#: ../src/program.cpp:2150
+msgid "agility boost"
+msgstr "bônus de agilidade"
+
+#: ../src/program.cpp:2153
+msgid "a teleport"
+msgstr "um teleporte"
+
+#: ../src/program.cpp:2176
+msgid "You have taken a medical kit."
+msgstr "Você pegou um kit médico."
+
+#: ../src/program.cpp:2184
+msgid "All have been frozen around you."
+msgstr "Tudo ao seu redor foi congelado."
+
+#: ../src/program.cpp:2203
+msgid "Boom!"
+msgstr "Bum!"
+
+#: ../src/program.cpp:2216
+msgid "You got powerful penetration bullets."
+msgstr "Você conseguiu projéteis perfurantes mais poderosos."
+
+#: ../src/program.cpp:2223
+msgid "You got a vitality boost."
+msgstr "Você recebeu um bônus de vitalidade."
+
+#: ../src/program.cpp:2230
+msgid "You got a strength boost."
+msgstr "Você recebeu um bônus de força."
+
+#: ../src/program.cpp:2237
+msgid "You got a agility boost."
+msgstr "Você recebeu um bônus de agilidade."
+
+#: ../src/program.cpp:2244
+msgid "You have taken a grenade."
+msgstr "Você pegou uma granada."
+
+#: ../src/program.cpp:2250
+msgid "You have taken a teleport."
+msgstr "Você pegou um teleporte."
+
+#: ../src/program.cpp:2260
+#, c-format
+msgid "You have taken the %s."
+msgstr "Você pegou %s."
+
+#: ../src/program.cpp:2485
+#, c-format
+msgid "FPS: %i"
+msgstr "FPS: %i"
+
+#: ../src/game/HUD.cpp:219
+msgid "They have overcome..."
+msgstr "Eles venceram..."
+
+#: ../src/game/HUD.cpp:223
+#, c-format
+msgid "You have earned %i points."
+msgstr "Você ganhou %i pontos."
+
+#: ../src/game/HUD.cpp:230
+msgid "Enter your name:"
+msgstr "Digite seu nome:"
+
+#: ../src/game/HUD.cpp:272
+#, c-format
+msgid "Grenades: %i"
+msgstr "Granadas: %i"
+
+#: ../src/game/HUD.cpp:280
+#, c-format
+msgid "Teleports: %i"
+msgstr "Teleportes: %i"
+
+#: ../src/game/HUD.cpp:296
+msgid "PAUSE"
+msgstr "PAUSA"
+
+#: ../src/system/InputHandler.cpp:148
+msgid "Restart"
+msgstr "Reiniciar"
+
+#: ../src/system/InputHandler.cpp:151 ../src/windows/MainMenuWindow.cpp:26
+msgid "Exit"
+msgstr "Sair"
+
+#: ../src/system/InputHandler.cpp:154
+msgid "Menu"
+msgstr "Menu"
+
+#: ../src/system/InputHandler.cpp:157
+msgid "MenuClickA"
+msgstr "Clique A do menu"
+
+#: ../src/system/InputHandler.cpp:160
+msgid "MenuClickB"
+msgstr "Clique B do menu"
+
+#: ../src/system/InputHandler.cpp:163
+msgid "Toggle Light"
+msgstr "Ativar/desativar luz"
+
+#: ../src/system/InputHandler.cpp:166
+msgid "Toggle Laser"
+msgstr "Ativar/desativar mira"
+
+#: ../src/system/InputHandler.cpp:169
+msgid "Show Char"
+msgstr "Mostrar personagem"
+
+#: ../src/system/InputHandler.cpp:172
+msgid "Pause"
+msgstr "Pausar"
+
+#: ../src/system/InputHandler.cpp:175
+msgid "Move Left"
+msgstr "Mover para a esquerda"
+
+#: ../src/system/InputHandler.cpp:178
+msgid "Move Right"
+msgstr "Mover para a direita"
+
+#: ../src/system/InputHandler.cpp:181
+msgid "Move Up"
+msgstr "Mover para cima"
+
+#: ../src/system/InputHandler.cpp:184
+msgid "Move Down"
+msgstr "Mover para baixo"
+
+#: ../src/system/InputHandler.cpp:187
+msgid "Help"
+msgstr "Ajuda"
+
+#: ../src/system/InputHandler.cpp:190
+msgid "Pick Up"
+msgstr "Pegar"
+
+#: ../src/system/InputHandler.cpp:193
+msgid "Throw Grenade"
+msgstr "Usar granada"
+
+#: ../src/system/InputHandler.cpp:196
+msgid "Fire"
+msgstr "Atacar"
+
+#: ../src/system/InputHandler.cpp:199
+msgid "Reload"
+msgstr "Recarregar"
+
+#: ../src/system/InputHandler.cpp:202
+msgid "Teleport"
+msgstr "Teleportar"
+
+#: ../src/system/InputHandler.cpp:208
+msgid "Unknown event"
+msgstr "Evento desconhecido"
+
+#: ../src/windows/CharStatsWindow.cpp:12
+msgid "Perks:"
+msgstr "Vantagens:"
+
+#: ../src/windows/CharStatsWindow.cpp:17
+msgid "Unstoppable"
+msgstr "Imparável"
+
+#: ../src/windows/CharStatsWindow.cpp:22
+msgid "Poison bullets"
+msgstr "Projéteis venenosos"
+
+#: ../src/windows/CharStatsWindow.cpp:28
+msgid "Big calibre"
+msgstr "Grande calibre"
+
+#: ../src/windows/CharStatsWindow.cpp:33
+msgid "Telekinesis"
+msgstr "Telecinese"
+
+#: ../src/windows/CharStatsWindow.cpp:38
+msgid "Night vision"
+msgstr "Visão noturna"
+
+#: ../src/windows/CharStatsWindow.cpp:42
+msgid "Looting"
+msgstr "Saque"
+
+#: ../src/windows/CharStatsWindow.cpp:48
+msgid "Wide sight"
+msgstr "Visão ampliada"
+
+#: ../src/windows/CharStatsWindow.cpp:53
+msgid "Move mouse over text to get explantation..."
+msgstr "Passe o mouse sobre o texto para ver a explicação..."
+
+#: ../src/windows/MainMenuWindow.cpp:13
+msgid "Resume"
+msgstr "Continuar"
+
+#: ../src/windows/MainMenuWindow.cpp:17
+msgid "Start"
+msgstr "Iniciar"
+
+#: ../src/windows/MainMenuWindow.cpp:23
+msgid "High scores"
+msgstr "Recordes"
