@@ -13,7 +13,8 @@
     "desktop:build": "tauri build",
     "tauri": "tauri",
     "localize:inspect": "node scripts/kairo-localize.mjs inspect",
-    "localize:batch": "node scripts/kairo-localize.mjs batch"
+    "localize:batch": "node scripts/kairo-localize.mjs batch",
+    "localize:merge": "node scripts/kairo-localize.mjs merge"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
@@ -38,4 +39,4 @@
     "typescript": "^5.7.0",
     "vite": "^8.2.0"
   }
-}\n
+}
