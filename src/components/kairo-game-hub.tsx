@@ -16,6 +16,7 @@ import {
   Volume2,
   Mic2,
   ExternalLink,
+  Workflow,
 } from "lucide-react";
 import {
   GAMES,
@@ -44,8 +45,9 @@ import {
   parseRedkitLocalizationCsv,
   runLocalizationQa,
 } from "@/lib/redkit-localization";
+import { ProductionStudio } from "./production-studio";
 
-type View = "catalog" | "localize" | "dubbing" | "about";
+type View = "catalog" | "production" | "localize" | "dubbing" | "about";
 type Scene = { speaker: string; text: string; choices?: { label: string; next: number; affinity?: number }[] };
 
 const ROMANCE_SCENES: Scene[] = [
@@ -363,13 +365,15 @@ export function KairoGameHub() {
   return <div className="gamehub">
     <aside className="hub-sidebar"><div className="hub-brand"><div>K</div><span>Kairo <b>GameHub</b></span></div><nav>
       <button className={view==="catalog"?"active":""} onClick={()=>setView("catalog")}><Gamepad2/> Jogos</button>
+      <button className={view==="production"?"active":""} onClick={()=>setView("production")}><Workflow/> Produção</button>
       <button className={view==="localize"?"active":""} onClick={()=>setView("localize")}><Languages/> Localizar</button>
       <button className={view==="dubbing"?"active":""} onClick={()=>setView("dubbing")}><Mic2/> Dublar</button>
       <button className={view==="about"?"active":""} onClick={()=>setView("about")}><BookOpen/> Projeto</button>
     </nav><div className="side-note"><ShieldCheck size={17}/><p>Conteúdo próprio ou autorizado. Tradução sem redistribuir arquivos protegidos de terceiros.</p></div></aside>
     <main className="hub-main">
-      <header className="hub-top"><div><span className="kicker">KAIRO SDK · PT-BR FIRST</span><h1>{view==="catalog"?"Biblioteca":view==="localize"?"Localização":view==="dubbing"?"Dublagem":"Projeto"}</h1></div><div className="pt-badge"><Languages size={15}/> Português Brasil</div></header>
+      <header className="hub-top"><div><span className="kicker">KAIRO SDK · PT-BR FIRST</span><h1>{view==="catalog"?"Biblioteca":view==="production"?"Produção":view==="localize"?"Localização":view==="dubbing"?"Dublagem":"Projeto"}</h1></div><div className="pt-badge"><Languages size={15}/> Português Brasil</div></header>
       {view==="catalog"&&<><section className="hero-game"><div><span className="hero-pill"><Sparkles size={14}/> Original Kairo</span><h2>Jogos em português<br/><em>desde a primeira linha.</em></h2><p>Do arcade leve à narrativa longa. O mesmo hub organiza, executa e prepara pacotes de localização para projetos grandes.</p></div><div className="hero-orb"><span>BR</span></div></section><div className="catalog-head"><div><h2>Jogos disponíveis</h2><p>{GAMES.length} projetos na biblioteca</p></div></div><section className="hub-grid">{GAMES.map(g=><GameCard key={g.id} game={g} onPlay={openGame}/>)}</section></>}
+      {view==="production"&&<ProductionStudio/>}
       {view==="localize"&&<LocalizationLab/>}
       {view==="dubbing"&&<DubbingLab/>}
       {view==="about"&&<section className="about-panel"><span className="kicker">NOVA DIREÇÃO</span><h2>Kairo agora também é uma plataforma de jogos e localização.</h2><p>O SDK foi reorganizado para hospedar jogos próprios, experiências narrativas, projetos grandes por pacotes e um fluxo de tradução PT-BR com validação de placeholders.</p><div className="about-grid"><div><CheckCircle2/><b>Jogos originais</b><span>Sem depender de assets externos.</span></div><div><Languages/><b>PT-BR nativo</b><span>Interface e conteúdo em português.</span></div><div><ShieldCheck/><b>Localização segura</b><span>Preserva tokens e trabalha com arquivos autorizados.</span></div></div></section>}
