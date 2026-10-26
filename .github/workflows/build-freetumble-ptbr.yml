@@ -34,6 +34,14 @@ jobs:
             mingw-w64-ucrt-x86_64-ninja
             mingw-w64-ucrt-x86_64-sfml
 
+      - name: Build SFML 2.6.2 compatibility runtime
+        shell: msys2 {0}
+        run: |
+          git clone --branch 2.6.2 --depth 1 https://github.com/SFML/SFML.git sfml2-src
+          cmake -S sfml2-src -B sfml2-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/sfml2-install" -DSFML_BUILD_EXAMPLES=OFF -DSFML_BUILD_DOC=OFF
+          cmake --build sfml2-build --parallel 2
+          cmake --install sfml2-build
+
       - name: Fetch original FreeTumble source
         shell: msys2 {0}
         run: |
@@ -49,7 +57,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd upstream
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_PREFIX_PATH="$PWD/../sfml2-install" -DSFML_DIR="$PWD/../sfml2-install/lib/cmake/SFML"
           cmake --build build --parallel 2
           test -f build/freetumble.exe
 
