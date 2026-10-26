@@ -46,6 +46,7 @@ jobs:
         run: |
           git clone --recurse-submodules --branch "$GAME_VERSION" --depth 1 https://github.com/ooxi/violetland.git upstream
           cp localizations/violetland/pt_BR.po upstream/po/pt_BR.po
+          sed -i 's/boost::filesystem::copy_option::overwrite_if_exists/boost::filesystem::copy_options::overwrite_existing/g' upstream/src/game/Highscores.cpp
 
       - name: Build original game with PT-BR
         shell: msys2 {0}
