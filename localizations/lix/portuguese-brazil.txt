@@ -1,0 +1,460 @@
+// Tradução PT-BR do Lix para a JogaTeca BR.
+// Base: Lix v0.10.36 / SimonN/LixD.
+// Preserve as chaves e placeholders (%s, %d) exatamente como no arquivo original.
+
+$mainNameOfLanguage Português (Brasil)
+
+$versioningVersion Versão
+$versioningForOperatingSystem para
+
+$commonOk OK
+$commonCancel Cancelar
+$commonBack Voltar
+$commonExit Sair
+
+$mainMenuGetMusic Extrair a música para a pasta do Lix:
+
+$browserSingleTitle Um jogador|No menu principal, abra o navegador de fases para um jogador.
+$browserNetworkTitle Selecionar fase multijogador
+$browserPlay Jogar
+$browserEdit Editar
+$browserNewLevel Criar fase
+$browserDelete Excluir
+$browserSearch Pesquisar
+$browserOpenRepForLev Carregar replay
+$browserExportImage Exportar imagem
+$browserExportImageDone Exportado para:
+$browserMkdirTitle Criar pasta
+$browserMkdirPleaseEnter Nome da nova pasta:
+
+$browserReplayTitle Replays|No menu principal, abra o navegador de replays.
+$browserReplayPointedTo Fase indicada
+$browserReplayVerifyDir Verificar pasta
+
+$winVerifyTitle Verificador de replays
+$winVerifyOutputWrittenTo Saída gravada em “%s”. Clique para voltar.
+$verifyHeader Resultado,Replay,Fase,Jogador,Salvos,Necessários,Habilidades,Tiques
+$verifyStatisticsFrom Estatísticas de %d replays:
+$verifyTrophiesUpdated %d troféus de %s atualizados.
+$verifyLevelsNoProof Estas %d fases não têm prova:
+$verifyDirectoryCoverage Cobertura da pasta:
+$verifyAllLevelsCovered Todas as %d fases podem ser concluídas.
+$verifySomeLevelsCovered %d de %d fases podem ser concluídas; %d talvez não possam.
+$verifyStatusMultiplayer Replay ignorado: é multijogador.
+$verifyStatusNoPointer O replay não informa um arquivo de fase.
+$verifyStatusMissingLevel O replay aponta para uma fase inexistente.
+$verifyStatusBadLevel O replay aponta para uma fase inválida.
+$verifyStatusFailed O replay não conclui a fase indicada.
+$verifyStatusMercyKilled O replay passou de %d minutos após a última habilidade.
+$verifyStatusSolved O replay conclui a fase indicada.
+
+$previewLevelAuthor por
+$previewLevelSingleGoal Objetivo:
+$previewLevelSingleTrophySaved Melhor:
+$previewLevelSingleTrophySkills Habilidades:
+$previewLevelMultiIntendedNumPlayers Jogadores:
+$previewReplayPlayer Jogador:
+$previewReplayFilenameOfReplay Replay:
+$previewReplayPointsTo ⟶
+$previewMissingTiles %d blocos ausentes:
+$previewMissingTilesMoreSee e mais %d; veja “%s”
+
+$harvestYouSavedThisTime Você salvou %d lix!
+$harvestReplayAutoSaved Replay salvo automaticamente.
+$harvestReplaySaveManuallyAtAll Salvar replay
+$harvestReplaySaveManuallyToo Salvar manualmente
+
+$winSearchTitle Pesquisa de fases
+$winSearchPrompt Pesquisar por título, autor ou nome de arquivo em %d fases:
+
+$repForLevTitle Carregar replay de “%s”
+$repForLevFoundWhere Listando replays da pasta:
+$repForLevFoundWhat com nomes de arquivo começando por:
+
+$outcomeRetryOldLevel Tentar novamente:
+$outcomeYouSolvedOldLevel Parabéns! Você concluiu:
+$outcomeAttemptNextLevel Próxima fase:
+$outcomeResolveNextLevel Próxima fase (concluída):
+$outcomeAttemptNextUnsolvedLevel Próxima fase não concluída:
+$outcomeExitToSingleBrowser Voltar ao navegador de fases
+
+$outcomeTrophyLixSaved Lix
+$outcomeTrophySkillsUsed Habilidades
+$outcomeTrophyYourAttempt Seu resultado
+$outcomeTrophyPreviousRecord Recorde
+
+$winLobbyTitle Jogo em rede|No menu principal, abra o lobby de rede.
+$winLobbyDisconnect Desconectar
+$winLobbyStartCentral Jogar no servidor central
+$winLobbyStartServer Hospedar um jogo
+$winLobbyStartCustom Conectar a outra pessoa
+$winLobbyTitleAddress Endereço
+$winLobbyTitlePort Porta UDP
+$winLobbyChat Chat:
+$winLobbySelectLevel Escolher fase
+$winLobbyReady Pronto para começar
+$winLobbyRoomNumber Sala nº %d
+$winLobbyRoomInhabitants %d jogadores
+$winLobbyRoomCreate Abrir nova sala
+$winLobbyRoomLeave Sair da sala
+
+$handicapTitle Desvantagem
+$handicapPhilosophy1 Com uma desvantagem, você começa em condição pior.
+$handicapPhilosophy2 Quando um jogador mais experiente joga com um menos experiente, o mais forte
+$handicapPhilosophy3 pode escolher uma desvantagem para deixar a partida mais equilibrada.
+$handicapInitialLix Lix iniciais|Suas entradas começam com menos lix.
+$handicapInitialLixNormal Quantidade normal de lix
+$handicapInitialSkills Habilidades|Seu painel de habilidades começa com números menores.
+$handicapInitialSkillsNormal Painel normal
+$handicapSpawnDelay Atraso de surgimento|Seu primeiro lix aparece mais tarde.
+$handicapSpawnDelayNormal Imediatamente
+$handicapScore Pontuação|Seus objetivos dão menos pontos por lix que entra.
+$handicapScoreNormal 1 ponto por lix
+
+$winAbortNetgameTitle Menu do jogo|Abra o menu durante partidas em rede.|Isso permite sair antes do fim. A partida não pausa.
+$winAbortNetgameContinuePlaying Continuar jogando
+$winAbortNetgameExitToLobby Sair para o lobby
+
+$gameForceLeft [%s] para quem está virado à esquerda.
+$gameForceRight [%s] para quem está virado à direita.
+$gamePriorityInvert [%s] para o lix de menor prioridade.
+$gameQueueBuilder Clique novamente para colocar na fila.
+$gameQueuePlatformer Clique novamente para colocar na fila.
+$gamePurelyInsert Inserir uma habilidade no replay.
+$gameReplaceFuture1 Substituir 1 habilidade futura.
+$gameReplaceFutureN Substituir %d habilidades futuras.
+$gameCancelReplay Reproduzindo replay. Clique para jogar a partir daqui.
+$gameFramestepOrQuit Volte no tempo (◀▮) ou saia com [%s].
+$gameMaxTicksReached Número máximo de tiques (%s) atingido. Volte ou saia.
+$gamePause Pausar.
+$gameShowSplatRuler Mostrar régua de queda.
+$gameHighlightGoals Destacar suas entradas e objetivos.
+$gameStateSave Salvar rapidamente a posição do jogo.
+$gameStateLoad Carregar a posição salva.
+$gameShowTweaker Mostrar editor de replay.
+$gameRewindPrevPly Voltar até sua atribuição de habilidade anterior.
+$gameRewindOneTick %s para voltar 1 tique; %s para voltar 1 segundo.
+$gameSkipOneTick %s para avançar 1 tique; %s para pular 10 segundos.
+$gameFastForward %s para avanço rápido; %s para turbo.
+$gameRestart Reiniciar fase.
+$gameNuke Encerrar todos. Clique duas vezes para ativar.
+$gameInfobarPlus1Lix + 1 lix
+$gameInfobarPlusNLix + %d lix
+
+$tweakerHeaderLixID Lix
+$tweakerHeaderTick Tique
+$tweakerLineNow Agora
+$tweakerEmptyListTitle Editor de replay
+$tweakerEmptyListDesc1 Clique em algum lix.
+$tweakerEmptyListDesc2 Depois, ajuste suas
+$tweakerEmptyListDesc3 ações aqui.
+
+$skill=walker Andador|está andando|Volta ou cancela bloqueadores.
+$skill=jumper Saltador|está saltando|Salta uma vez. Corredores saltam mais longe.
+$skill=climber Escalador|está escalando|Escala todas as paredes verticais.
+$skill=floater Flutuador|está flutuando|Flutua para sobreviver a qualquer queda.
+$skill=runner Corredor|está correndo|Corre mais rápido que os andadores.
+$skill=exploder Implosor|está implodindo|Implode para destruir terreno/cancelar bloqueadores.
+$skill=exploder2 Explosor|está explodindo|Explode e arremessa outros lix.
+$skill=blocker Bloqueador|está bloqueando|Bloqueia e faz outros lix mudarem de direção.
+$skill=batter Rebatedor|está rebatendo|Rebate outros lix e os arremessa.
+$skill=cuber Cubificador|está virando cubo|Cria terreno rapidamente em forma de cubo.
+$skill=builder Construtor|está construindo|Constrói uma escada diagonal.
+$skill=platformer Plataformador|está criando plataforma|Constrói uma ponte horizontal.
+$skill=basher Escavador horizontal|está abrindo túnel|Abre um túnel horizontal.
+$skill=miner Minerador|está minerando|Abre um túnel diagonal.
+$skill=digger Escavador|está cavando|Cava um buraco vertical.
+
+$skill=faller Em queda|está caindo
+$skill=tumbler Cambaleante|está cambaleando
+$skill=stunner Atordoado|está atordoado
+$skill=lander Pousador|está pousando
+$skill=ascender Ascendente|está subindo
+$skill=shrugger Ombros|está dando de ombros
+$skill=shrugger2 Ombros|está dando de ombros
+
+$tooltipHatch Entrada. Intervalo de surgimento: %d.
+$tooltipGoalPuzzleZero Objetivo. Salve %d/%d para vencer.
+$tooltipGoalPuzzleSome Objetivo. Salve %d/%d. Você já salvou %d.
+$tooltipGoalYours Objetivo. Cada lix vale pontos para você.
+$tooltipGoalOpponents Objetivo. Seu adversário recebe pontos.
+$tooltipFire Fogo. Sempre fatal.
+$tooltipWater Água. Sempre fatal.
+$tooltipMuncher Armadilha. Elimina em %d tiques.
+$tooltipCatapult Catapulta. Arremessa %s%d, %s%d em %d tiques.
+$tooltipSteam Vapor. Arremessa todos os lix %s%d, %s%d.
+
+$editorHotkey Atalho:
+$editorBarAt em
+$editorBarGroup -grupo-de-blocos
+$editorBarHover blocos prestes a ser selecionados
+$editorBarSelection blocos selecionados
+
+$editorButtonFileNew Novo: apaga tudo na tela e inicia uma nova fase.
+$editorButtonFileExit Sair: fecha o editor e pergunta se deseja salvar alterações.
+$editorButtonFileSave Salvar:
+$editorButtonFileSaveAs Salvar como: salva a fase atual com outro nome de arquivo.
+$editorButtonGrid2 Grade 2: os blocos se moverão em passos de 2 pixels.
+$editorButtonGridCustom Grade personalizada: o tamanho é configurável nas opções.
+$editorButtonGrid16 Grade 16: os blocos se moverão em passos de 16 pixels.
+$editorButtonSelectAll Tudo: seleciona todos os blocos da fase.
+$editorButtonSelectFrame Moldura: arraste uma moldura com o mouse para selecionar blocos.
+$editorButtonSelectAdd Adicionar: mantém os blocos selecionados ao selecionar outros.
+$editorButtonUndo Desfazer: reverte suas alterações mais recentes.
+$editorButtonRedo Refazer: reaplica alterações desfeitas.
+$editorButtonGroup Agrupar: cria um único bloco com todos os blocos selecionados.
+$editorButtonUngroup Desagrupar: recupera os blocos individuais de grupos selecionados.
+$editorButtonSelectCopy Copiar: clona os blocos selecionados para colocá-los em outro lugar.
+$editorButtonSelectDelete Excluir: remove os blocos selecionados da fase.
+$editorButtonBackground Fundo: coloca os blocos selecionados atrás de outros.
+$editorButtonForeground Frente: coloca os blocos selecionados à frente de outros.
+$editorButtonMirrorHorizontally Espelhar: espelha o terreno selecionado horizontalmente.
+$editorButtonFlipVertically Inverter: inverte o terreno selecionado verticalmente.
+$editorButtonSelectRotate Girar: gira o terreno selecionado em 90 graus.
+$editorButtonSelectDark Escuro: o terreno selecionado apaga terreno normal.
+$editorButtonAddTerrain Terreno: adicionar um bloco de terreno.
+$editorButtonAddSteel Aço: adicionar um bloco de aço que não pode ser escavado.
+$editorButtonAddHatch Entrada: adicionar uma entrada de lix.
+$editorButtonAddGoal Objetivo: adicionar uma saída para os lix.
+$editorButtonAddHazard Perigo: adicionar armadilha, água ou fogo.
+$editorButtonMenuConstants Constantes: definir nome da fase e valores fundamentais.
+$editorButtonMenuTopology Mapa: redimensionar a fase e configurar bordas.
+$editorButtonMenuSkills Habilidades: decidir quantas habilidades cada jogador pode usar.
+
+$saveBrowserTitle Salvar como
+$saveBrowserWhatToType Nome do arquivo sem extensão:
+$saveBoxOverwriteTitle Sobrescrever?
+$saveBoxOverwriteQuestion Deseja realmente sobrescrever esta fase?
+$saveBoxOverwrite Sobrescrever
+
+$saveBoxTitleDelete Excluir?
+$saveBoxTitleSave Salvar?
+$saveBoxQuestionUnsavedChangedLevel Salvar alterações nesta fase?
+$saveBoxQuestionUnsavedNewLevel Salvar esta nova fase?
+$saveBoxQuestionDeleteReplay Excluir este replay?
+$saveBoxQuestionDeleteLevel Excluir esta fase?
+$saveBoxDirectory Pasta:
+$saveBoxFileName Arquivo:
+$saveBoxLevelName Título:
+$saveBoxYesSave Salvar
+$saveBoxNoDiscard Descartar
+$saveBoxNoCancel Cancelar
+
+$addTerrain Adicionar terreno
+$addSteel Adicionar aço
+$addHatch Adicionar entrada
+$addGoal Adicionar objetivo
+$addHazard Adicionar perigo
+
+$winTopologyTitle Mapa
+$winTopologyL Esquerda:
+$winTopologyR Direita:
+$winTopologyU Acima:
+$winTopologyD Abaixo:
+$winTopologyTorusX Envolver horizontalmente
+$winTopologyTorusY Envolver verticalmente
+$winTopologyWarnSize1 Uma fase tão grande, com
+$winTopologyWarnSize2 pixels,
+$winTopologyWarnSize3 trava em alguns PCs.
+
+$winLooksTitle Aparência
+$winLooksRed Vermelho do fundo
+$winLooksGreen Verde do fundo
+$winLooksBlue Azul do fundo
+
+$winConstantsTitle Constantes
+$winConstantsAuthor Autor
+$winConstantsLevelName Título da fase
+$winConstantsTooLongWarn Longo demais!
+$winConstantsTooLongDesc O navegador de fases vai abreviar.
+$winConstantsPlayers Jogadores
+$winConstantsInitial Lix iniciais
+$winConstantsRequired Lix necessários
+$winConstantsSpawnint Intervalo de surgimento
+$winConstantsOvertime Prorrogação
+
+$winSkillsTitle Habilidades
+$winSkillsUseExploder Explosor de arremesso
+$winSkillsClear Zerar tudo
+$winSkillsEightTo 8 clássicas para:
+$winSkillsAllTo Todas as 14 para:
+
+$exportSingleInitial Lix:
+$exportSingleRequired Salvar:
+$exportSingleSpawnint IS:
+
+$netChatEnetDLLMissing O modo de rede não está disponível; a DLL enet está ausente:
+$netChatStartClient Conectando a
+$netChatStartCancel Tentativa de conexão cancelada.
+$netChatYouLoggedOut Você saiu da rede.
+$netChatYouCannotConnect Servidor não encontrado.
+$netChatYouLostConnection Conexão com o servidor perdida!
+$netChatPeerDisconnected %s saiu da rede.
+$netChatVersionRoomRequires Você não pode entrar: a sala nº %d exige Lix versão %s,
+$netChatVersionServerSuggests Você não pode conectar: o servidor recomenda Lix versão %s,
+$netChatVersionYours mas você tem Lix %s.
+$netChatPleaseDownload Baixe a versão mais recente:
+$netChatWeInRoom Você entrou na sala nº %d.
+$netChatWeInLobby Você está no lobby.
+$netChatPlayerInRoom %s entrou na sala nº %d.
+$netChatPlayerInLobby %s entrou no lobby.
+$netChatPlayerOutRoom %s entrou na sala nº %d.
+$netChatPlayerOutLobby %s saiu da sala.
+$netChatHandicapSet %s jogará com desvantagem: %s
+$netChatHandicapUnset %s jogará sem desvantagem.
+$netChatLevelChange %s selecionou “%s”.
+$netGameHowToChat Pressione [%s] para conversar.
+$netGameFirstSpawnIn Começa em
+$netGameEndResult Resultado da partida:
+$netGameOvertimeNukeIn Prorrogação em andamento! Encerramento em
+
+$optionTitle Opções|No menu principal, abra o menu de opções.
+$optionGroupGeneral Geral
+$optionGroupGraphics Gráficos
+$optionGroupControls Controles
+$optionGroupGameControls Controles do jogo
+$optionGroupGameKeys Teclas do jogo
+$optionGroupEditorKeys Teclas do editor
+$optionGroupMenuKeys Teclas do menu
+$optionUserName Nome do jogador|Seu nome aparece em replays e partidas multijogador.|O Lix salva as configurações no arquivo ./user/options.sdl.
+$optionLanguage Idioma|Idioma usado na interface do Lix.
+$optionReplayAutoSolutions Salvar soluções automaticamente|Salva um replay automaticamente quando você conclui uma fase de um jogador.
+$optionReplayAutoMulti Salvar partidas multijogador automaticamente|Salva um replay automaticamente quando uma partida multijogador termina.
+$optionSoundEnabled Som|Ativar efeitos sonoros.
+$optionMusicEnabled Música|Ativar música de fundo.
+$optionSoundDecibels Volume dos efeitos em dB|Ajuste o volume dos efeitos. 0 já é bem alto.|Aumente/diminua 10 dB para dobrar/reduzir pela metade o volume.
+$optionMusicDecibels Volume da música em dB|Ajuste o volume da música. −10 dB costuma ser suficiente.|Aumente/diminua 10 dB para dobrar/reduzir pela metade o volume.
+
+$optionScreenWindowed Janela|Executar o Lix em uma janela. Escolha o tamanho à direita.|Alternar janelas (por exemplo, Alt+Tab) é rápido.
+$optionScreenSoftwareFullscreen Tela cheia por software|Cria uma janela sem borda ocupando o monitor inteiro.|Alternar janelas (por exemplo, Alt+Tab) é rápido.
+$optionScreenHardwareFullscreen Tela cheia por hardware|Entrar e sair da tela cheia por hardware leva alguns segundos.|Alternar janelas (por exemplo, Alt+Tab) leva alguns segundos.
+$optionScreenWindowedRes Tamanho da janela|Tamanho da janela do Lix no modo janela.
+$optionScreenHardwareFullscreenRes Resolução de tela cheia|A tela cheia por hardware usa esta resolução.|A tela cheia por software só usa isso se não detectar sua resolução.
+$optionAllowBlurryZoom Permitir zoom borrado|Permite fatores de zoom fracionários que encaixam a fase na tela.|Se desativado, o zoom será sempre nítido e inteiro: 1x, 2x, 3x, ...
+$optionPaintTorusSeams Mostrar bordas conectadas|Marca a emenda com uma linha fina quando a fase se conecta pelas bordas.|Não altera a física do jogo, mas ajuda na orientação.
+$optionIngameTooltips Dicas durante o jogo|Explica botões e atalhos de seleção durante a partida.|Alguns botões têm duas funções: clique esquerdo e clique direito.
+$optionShowFPS Mostrar tiques e FPS|Mostra a quantidade de tiques desde o início.|Mostra os quadros por segundo durante o jogo ou editor.
+
+$optionKeyZoomIn Zoom +|Aproximar a fase.
+$optionKeyZoomOut Zoom −|Afastar a fase.
+$optionKeyScroll Segurar para rolar|Segure esta tecla (padrão: botão direito do mouse ⟁) e mova o mouse.|É mais fácil, rápido e preciso que rolar pelas bordas.
+$optionKeyPriorityInvert Inverter prioridade|Segure para atribuir habilidades ao lix de menor prioridade.|No editor, seleciona o bloco mais ao fundo.
+$optionKeyScreenshot Captura de tela|Captura a janela inteira do Lix.|As capturas ficam em ./export/ ou ~/.local/share/lix/export/.
+
+$optionSplatRulerDesign2Bars Régua de queda com 2 barras|Mede a maior distância de queda sobrevivível.|Ative durante o jogo pelo botão do painel; veja Teclas do jogo.
+$optionSplatRulerDesign094 Régua de queda com 3 barras, atrás do terreno|Mede a maior distância de queda sobrevivível.|Ative durante o jogo pelo botão do painel; veja Teclas do jogo.
+$optionSplatRulerDesign3Bars Régua de queda com 3 barras, grande|Mede a maior distância de queda sobrevivível.|Ative durante o jogo pelo botão do painel; veja Teclas do jogo.
+$optionSplatRulerSnapPixels Distância de encaixe em pixels|A régua se encaixa em bordas acima/abaixo do cursor.|Use 0 para desativar. O padrão é 126.
+
+$optionMouseSpeed Velocidade do mouse|Velocidade de movimento do cursor.
+$optionScrollSpeedEdge Velocidade de rolagem na borda|Velocidade quando o cursor toca a borda da tela.
+$optionHoldToScrollSpeed Velocidade ao segurar para rolar|Velocidade ao mover o mouse enquanto segura a tecla de rolagem.|O padrão é o botão direito do mouse ⟁.
+$optionHoldToScrollInvert Inverter rolagem ao segurar|Rola na direção oposta ao movimento do mouse.|A tecla padrão é o botão direito do mouse ⟁.
+$optionFastMovementFreesMouse Movimento rápido libera o mouse|O mouse sai da janela ao movê-lo rapidamente contra as bordas.|Se desativado, use Alt+Tab para liberar o cursor.
+
+$optionRewindIsBrowse ◀▮ mantém atribuições|Ao voltar uma atribuição, ela permanece no replay|e será reproduzida depois. Clique no vazio para apagar.
+$optionRewindIsUndo ◀▮ apaga atribuições|Voltar é desfazer: atribuições voltadas são|apagadas imediatamente do replay.
+$optionWhenTweakerHidden Quando o editor de replay está oculto:|Ao iniciar uma fase de um jogador, ele começa oculto.|Mostre/oculte pelo botão do painel.
+$optionWhenTweakerShown Quando o editor de replay está visível:|Estes controles valem enquanto ele estiver visível.|Mostre/oculte pelo botão do painel.
+$optionAirClicksCut Cliques no vazio interrompem|Cliques no vazio apagam todas as atribuições futuras de todos os lix.|Se desativado, cliques no vazio não fazem nada.
+$optionInsertAssignments Inserir atribuições|Depois de ◀▮, atribuir habilidades preserva o futuro dos outros lix.|Se desativado, uma atribuição corta o futuro de todos os lix.
+$optionRewindToAssignmentPlusTicks ⬚◀◀ volta para um tique próximo|Para qual tique próximo da atribuição anterior voltar?|0: habilidade já visível. −1: instante do clique. −2: antes do clique.
+
+$optionKeyForceLeft Forçar esquerda|Segure para atribuir habilidade a lix virados à esquerda.|Útil em grupos densos.
+$optionKeyForceRight Forçar direita|Segure para atribuir habilidade a lix virados à direita.|Útil em grupos densos.
+$optionKeyPause Pausar|Pausa o jogo.|Você pode escolher se atribuir habilidade tira da pausa.
+$optionKeyRewindPrevPly ⬚◀◀|Volta até sua atribuição mais recente.|Depois, clique no vazio para apagar ou retome para reproduzir.
+$optionKeyRewindOneSecond ◀▮ 1 s|Volta 1 segundo.
+$optionKeyRewindOneTick ◀▮ 1 tique|Volta 1 tique, isto é, ¹⁄₁₅ de segundo.
+$optionKeySkipOneTick ▮▶ 1 tique|Avança 1 tique, isto é, ¹⁄₁₅ de segundo.
+$optionKeySkipTenSeconds ▮▶ 10 s|Avança 10 segundos.
+$optionKeySpeedFast ▶▶|Ativa/desativa avanço rápido.|O avanço rápido é 4 vezes mais veloz.
+$optionKeySpeedTurbo ▶▶▶|Ativa/desativa turbo.|O turbo é 36 vezes mais veloz.
+$optionKeyRestart Reiniciar|Reinicia a fase. Suas ações serão reproduzidas.|Clique no vazio para interromper o replay.
+$optionKeyStateLoad Carregar estado|Volta à posição lembrada.|Você pode lembrar a posição com Salvar estado.
+$optionKeyStateSave Salvar estado|Lembra a posição exata do jogo.|Você pode voltar a ela com Carregar estado.
+$optionKeyShowTweaker Editor de replay|Mostra o editor para ajustar tentativas.|Você pode apagar e mover atribuições.
+$optionKeyChat Chat|Abre o console de conversa durante partida multijogador.
+$optionKeyShowSplatRuler Régua de queda|Mostra uma régua para medir altura de queda.
+$optionKeyHighlightGoals Destacar objetivos|Destaca suas entradas e objetivos em partidas de rede.
+$optionKeyNuke Encerrar todos|No modo de um jogador, encerra todos os lix para finalizar a fase.|No multijogador, inicia a prorrogação se você salvou pelo menos 1 lix.
+
+$optionAvoidBuilderQueuing Preferir novas atribuições à fila|Prefere atribuir construtor a não construtores em vez de colocar na fila.|Segure inverter prioridade para fazer o contrário.
+$optionAvoidBatterToExploder Preferir rebatedores a não explosores|Prefere atribuir rebatedor a andadores em vez de explosores temporizados.|Segure inverter prioridade para fazer o contrário.
+$optionUnpauseOnAssign Tirar da pausa ao atribuir habilidade|Tira o jogo da pausa ao atribuir uma habilidade.|Se desativado, a atribuição avança só 1 quadro.
+
+$optionKeyMenuOkay OK/sim|Joga a fase destacada. Salva e fecha uma janela.
+$optionKeyMenuEdit Editar|Abre a fase destacada no editor.
+$optionKeyMenuNewLevel Criar|Abre o editor em uma fase vazia.
+$optionKeyMenuRepForLev Carregar replay|No navegador de um jogador, carrega um replay da fase destacada.
+$optionKeyMenuExport Exportar|Exporta a fase destacada como imagem.
+$optionKeyMenuDelete Excluir dados|Exclui um arquivo. Descarta dados não salvos quando solicitado.
+$optionKeyMenuUpDir Pasta acima|Volta uma pasta.|Você pode navegar por fases, replays ou blocos.
+$optionKeyMenuUpBy5 Subir 5|Move o destaque 5 arquivos para cima.|Permite navegar sem o mouse.
+$optionKeyMenuUpBy1 Subir 1|Move o destaque 1 arquivo para cima.|Permite navegar sem o mouse.
+$optionKeyMenuDownBy1 Descer 1|Move o destaque 1 arquivo para baixo.|Permite navegar sem o mouse.
+$optionKeyMenuDownBy5 Descer 5|Move o destaque 5 arquivos para baixo.|Permite navegar sem o mouse.
+$optionKeyMenuExit Voltar/cancelar|Sai de um navegador. Fecha uma janela sem salvar.
+$optionGuiColorRed Vermelho do menu|Muda a cor da interface.
+$optionGuiColorGreen Verde do menu|Muda a cor da interface.
+$optionGuiColorBlue Azul do menu|Muda a cor da interface.
+
+$optionKeyOutcomeSaveReplay Salvar replay|Na tela após concluir uma fase de um jogador:|Salva o replay manualmente.
+$optionKeyOutcomeOldLevel Mesma fase|Na tela após concluir uma fase de um jogador:|Joga novamente a mesma fase.
+$optionKeyOutcomeNextLevel Próxima fase|Na tela após concluir uma fase de um jogador:|Joga a fase seguinte, concluída ou não.
+$optionKeyOutcomeNextUnsolved Próxima não concluída|Na tela após concluir uma fase de um jogador:|Joga a próxima fase ainda não concluída.
+
+$optionEdLeft Mover à esquerda|Move os blocos selecionados para a esquerda.|O movimento respeita a grade. Segure para mover rápido.
+$optionEdRight Mover à direita|Move os blocos selecionados para a direita.|O movimento respeita a grade. Segure para mover rápido.
+$optionEdUp Mover para cima|Move os blocos selecionados para cima.|O movimento respeita a grade. Segure para mover rápido.
+$optionEdDown Mover para baixo|Move os blocos selecionados para baixo.|O movimento respeita a grade. Segure para mover rápido.
+$optionEdSave Salvar
+$optionEdSaveAs Salvar como
+$optionEdGrid Tamanho da grade
+$optionEdGridCustom Tamanho de grade personalizado
+$optionEdSelectAll Selecionar tudo
+$optionEdSelectFrame Selecionar moldura
+$optionEdSelectAdd Adicionar à seleção
+$optionEdUndo Desfazer
+$optionEdRedo Refazer
+$optionEdGroup Agrupar
+$optionEdUngroup Desagrupar
+$optionEdCopy Copiar
+$optionEdDelete Excluir
+$optionEdForeground Frente
+$optionEdBackground Fundo
+$optionEdMirrorHorizontally Espelhar
+$optionEdFlipVertically Inverter
+$optionEdRotate Girar
+$optionEdDark Desenhar preto
+$optionEdAddTerrain Adicionar terreno
+$optionEdAddSteel Adicionar aço
+$optionEdAddHatch Adicionar entrada
+$optionEdAddGoal Adicionar objetivo
+$optionEdAddHazard Adicionar perigo
+
+$keyboardKeyCapsLock Caps Lock
+$keyboardKeyLeftShift Shift
+$keyboardKeyRightShift Shift
+$keyboardKeyLeftCtrl Ctrl
+$keyboardKeyRightCtrl Ctrl
+$keyboardKeyLeftAlt Alt
+$keyboardKeyRightAlt Alt
+$keyboardKeyLeftWin Win
+$keyboardKeyRightWin Win
+$keyboardKeyContextMenu Menu de contexto
+
+$keyboardKeyInsert Insert
+$keyboardKeyDelete Delete
+$keyboardKeyHome Home
+$keyboardKeyEnd End
+$keyboardKeyPageUp Page Up
+$keyboardKeyPageDown Page Down
+$keyboardKeyPrint Print Screen
+$keyboardKeyScrollLock Scroll Lock
+$keyboardKeyPause Pause
+$keyboardKeyNumLock Num Lock
+
+$windowAskNameTitle Lix
+$windowAskNameFirst Olá! Boas-vindas!
+$windowAskNameSecond Qual é o seu nome?
