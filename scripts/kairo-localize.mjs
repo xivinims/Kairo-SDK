@@ -7,6 +7,7 @@ function usage() {
   console.log("Uso:");
   console.log("  node scripts/kairo-localize.mjs inspect <arquivo>");
   console.log("  node scripts/kairo-localize.mjs batch <arquivo.json> [tamanho]");
+  console.log("  node scripts/kairo-localize.mjs merge <projeto.json> <pasta-de-lotes>");
   process.exit(1);
 }
 
@@ -65,6 +66,47 @@ if (command === "batch") {
   }
 
   console.log(JSON.stringify({ batches: count, pending: pending.length, output: outDir }, null, 2));
+  process.exit(0);
+}
+
+
+if (command === "merge") {
+  const batchesDir = sizeArg ? path.resolve(sizeArg) : "";
+  if (!batchesDir || !fs.existsSync(batchesDir) || !fs.statSync(batchesDir).isDirectory()) {
+    console.error("Pasta de lotes não encontrada:", batchesDir || "(vazia)");
+    process.exit(4);
+  }
+  if (path.extname(absolute).toLowerCase() !== ".json") {
+    console.error("O projeto principal precisa ser JSON.");
+    process.exit(5);
+  }
+
+  const project = JSON.parse(text);
+  const strings = Array.isArray(project.strings) ? project.strings : [];
+  const translated = new Map();
+
+  for (const name of fs.readdirSync(batchesDir).filter((name) => name.endsWith(".json")).sort()) {
+    const batchPath = path.join(batchesDir, name);
+    const batch = JSON.parse(fs.readFileSync(batchPath, "utf8"));
+    for (const row of Array.isArray(batch.strings) ? batch.strings : []) {
+      if (row?.id && typeof row.translation === "string" && row.translation.trim()) {
+        translated.set(String(row.id), row.translation);
+      }
+    }
+  }
+
+  let applied = 0;
+  for (const row of strings) {
+    const next = translated.get(String(row.id));
+    if (next) {
+      row.translation = next;
+      applied++;
+    }
+  }
+
+  const out = path.join(path.dirname(absolute), path.basename(absolute, ".json") + "-merged.json");
+  fs.writeFileSync(out, JSON.stringify(project, null, 2));
+  console.log(JSON.stringify({ applied, output: out }, null, 2));
   process.exit(0);
 }
 
