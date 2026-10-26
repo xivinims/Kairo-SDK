@@ -1,45 +1,45 @@
-# Kairo Agent
+# Kairo GameHub / SDK
 
-Kairo Agent é o aplicativo de agente de IA deste repositório. A aplicação usa Gemini 2.5 Flash no servidor, com pesquisa web nativa e um registro único de skills.
+O Kairo-SDK agora também funciona como uma base para **jogos originais em português brasileiro** e para **localização de jogos autorizados para PT-BR**.
 
-## Configuração
+## O que entrou
 
-Crie um arquivo `.env` ou configure a variável no ambiente de deploy:
+- Catálogo de jogos com categorias e classe de tamanho (leve, médio, pesado).
+- Jogos originais jogáveis no navegador:
+  - **Corações em Órbita** — visual novel de romance e escolhas.
+  - **Neon Runner BR** — arcade.
+  - **A Cidade Sem Nome** — narrativa/puzzle.
+- Laboratório de localização para JSON:
+  - extrai strings profundamente;
+  - trabalha por blocos para projetos grandes;
+  - detecta tokens/variáveis que não podem sumir;
+  - exporta pacotes `.kairo-loc.json`;
+  - inclui glossário e status de revisão.
+- Interface PT-BR first.
+- Mantém a base Vite + React + TypeScript + Tauri para versão desktop.
 
-```env
-GEMINI_API_KEY=sua_chave
-```
+## Regra de conteúdo
 
-A chave é usada somente no servidor; o navegador não recebe a credencial.
+A ferramenta pode localizar material **próprio, open source ou autorizado pelo detentor dos direitos**. Ela não inclui jogos comerciais, textos de jogos de terceiros nem mecanismos para redistribuir conteúdo protegido.
 
 ## Desenvolvimento
 
 ```bash
 npm install
 npm run dev
-```
-
-## Build
-
-```bash
+npm run typecheck
 npm run build
 ```
 
-## Desktop
-
-O projeto também mantém o shell Tauri 2 para distribuição desktop:
+Desktop:
 
 ```bash
 npm run desktop:dev
 npm run desktop:build
 ```
 
-## Arquitetura
+## Backup
 
-- `src/components/kairo-agent-app.tsx`: interface principal do Agent.
-- `src/lib/kairo-agent.ts`: execução server-side do agente e integração Gemini.
-- `src/lib/kairo-skills.ts`: registro único e detecção de skills.
-- `src/routes/`: única rota da aplicação.
-- `src-tauri/`: runtime desktop com acesso local restrito.
+Antes da transformação foi criada a branch:
 
-O Agent não expõe chaves de API no cliente e não mantém os antigos provedores, bots, autenticação e fluxos de aplicativo como parte da execução principal.
+`backup/kairo-agent-before-gamehub-2026-10-25`
