@@ -1,0 +1,34 @@
+name: Inspect Taisei package
+
+on:
+  push:
+    branches: [game-library]
+    paths:
+      - ".github/workflows/inspect-taisei.yml"
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download official portable build
+        run: |
+          curl -L --fail --retry 3             -o taisei.zip             https://github.com/taisei-project/taisei/releases/download/v1.4.6/Taisei-1.4.6-windows-x86_64.zip
+          echo "b0dce96b538f16ad6e351117a2682878af32ca1b9d8f5358e114f468b8a4daa9  Taisei-1.4.6-setup-x86_64.exe" > /dev/null
+          echo "Portable ZIP SHA256:"
+          sha256sum taisei.zip
+      - name: Inspect package layout
+        run: |
+          unzip -q taisei.zip -d package
+          echo "=== top level ==="
+          find package -maxdepth 2 -type f | sort | head -200
+          echo "=== locale/mo matches ==="
+          find package -type f \( -iname '*.mo' -o -iname '*locale*' -o -iname '*.zip' -o -iname '*.pkg' \) | sort | head -400
+          echo "=== archives containing locale strings ==="
+          while IFS= read -r f; do
+            if unzip -l "$f" 2>/dev/null | grep -qiE 'locale/.*/LC_MESSAGES/taisei\.mo|taisei\.mo'; then
+              echo "ARCHIVE=$f"
+              unzip -l "$f" | grep -iE 'locale/.*/LC_MESSAGES/taisei\.mo|taisei\.mo' | head -50
+            fi
+          done < <(find package -type f \( -iname '*.zip' -o -iname '*.pkg' \))
