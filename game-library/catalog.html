@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kaise Games — Biblioteca PT-BR</title>
+<meta name="description" content="Biblioteca de jogos open source traduzidos para português brasileiro.">
+<style>
+:root{--bg:#0d0f12;--panel:#15181d;--panel2:#1c2026;--line:#2a2f37;--text:#f4f6f8;--muted:#9ba3ad;--accent:#9cff57;--accent2:#6bd8ff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh;background:
+radial-gradient(circle at 15% -10%,rgba(107,216,255,.10),transparent 32%),
+radial-gradient(circle at 90% 0%,rgba(156,255,87,.07),transparent 26%),var(--bg)}
+a{color:inherit;text-decoration:none}.shell{max-width:1380px;margin:0 auto;padding:0 28px 70px}
+.top{height:76px;display:flex;align-items:center;justify-content:space-between;gap:18px;position:sticky;top:0;z-index:10;background:linear-gradient(to bottom,rgba(13,15,18,.96),rgba(13,15,18,.78),transparent);backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:11px;font-weight:850;letter-spacing:-.03em}.mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#081014;font-size:12px;font-weight:950}.brand small{font-size:10px;color:var(--muted);display:block;font-weight:650;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+.nav{display:flex;align-items:center;gap:8px}.nav a{padding:10px 13px;color:#b9c0c9;font-size:13px;border-radius:12px}.nav a:hover,.nav a.active{background:#1a1e24;color:white}
+.search{width:min(360px,36vw);display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:#12151a;border-radius:999px;padding:10px 14px}.search input{width:100%;background:none;border:0;outline:0;color:white;font:inherit}.search input::placeholder{color:#747d88}
+.hero{min-height:560px;border:1px solid rgba(255,255,255,.07);border-radius:28px;overflow:hidden;position:relative;background:#15181d;margin-top:12px;display:flex;align-items:flex-end}
+.hero:before{content:"";position:absolute;inset:0;background:
+linear-gradient(90deg,rgba(8,10,13,.96) 0%,rgba(8,10,13,.72) 36%,rgba(8,10,13,.18) 67%,rgba(8,10,13,.50) 100%),
+linear-gradient(0deg,#0d0f12 0%,transparent 38%),
+url("https://lixgame.com/img/lix-d-screenshot.png") center/cover no-repeat;transform:scale(1.01)}
+.hero-content{position:relative;z-index:1;padding:54px;max-width:690px}.eyebrow{display:inline-flex;gap:8px;align-items:center;color:#c4ff9d;background:rgba(156,255,87,.09);border:1px solid rgba(156,255,87,.16);border-radius:999px;padding:7px 10px;font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.hero h1{font-size:72px;line-height:.92;letter-spacing:-.065em;margin:20px 0 16px}.hero p{font-size:16px;line-height:1.65;color:#c4cad1;max-width:590px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:13px 18px;font-size:13px;font-weight:850;border:1px solid transparent}.btn.primary{background:#fff;color:#0c0e11}.btn.secondary{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.09);color:#fff}.btn:hover{transform:translateY(-1px)}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.pill{font-size:10px;color:#c2c7ce;background:#181c22;border:1px solid #2a3038;padding:6px 9px;border-radius:999px}
+.section{margin-top:42px}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:16px}.section-head h2{margin:0;font-size:23px;letter-spacing:-.035em}.section-head p{margin:0;color:var(--muted);font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.card{background:var(--panel);border:1px solid rgba(255,255,255,.065);border-radius:18px;overflow:hidden;transition:.2s}.card:hover{transform:translateY(-4px);border-color:#3a414b;background:#181c21}.cover{aspect-ratio:16/10;background:#20242a;position:relative;overflow:hidden}.cover img{width:100%;height:100%;object-fit:cover;display:block}.cover:after{content:"";position:absolute;inset:auto 0 0;height:50%;background:linear-gradient(transparent,rgba(0,0,0,.72))}.status{position:absolute;z-index:2;top:12px;left:12px;background:#0d1113df;color:#d7ffbd;border:1px solid rgba(156,255,87,.28);border-radius:999px;padding:6px 8px;font-size:9px;font-weight:850;letter-spacing:.06em}.card-body{padding:15px}.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:#939ba5;font-size:12px;line-height:1.5}.card-meta{display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding-top:12px;border-top:1px solid #262b32;font-size:10px;color:#838b95}.empty{display:none;padding:44px;border:1px dashed #303640;border-radius:18px;text-align:center;color:#7f8893}
+.footer{margin-top:56px;padding-top:24px;border-top:1px solid #22272e;display:flex;justify-content:space-between;gap:20px;color:#707985;font-size:11px}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(3,1fr)}.hero{min-height:510px}.hero h1{font-size:60px}}
+@media(max-width:760px){.shell{padding:0 16px 44px}.top{height:68px}.nav{display:none}.search{width:48vw}.hero{min-height:560px;border-radius:22px}.hero:before{background:linear-gradient(0deg,rgba(8,10,13,.97) 0%,rgba(8,10,13,.76) 48%,rgba(8,10,13,.28) 100%),url("https://lixgame.com/img/lix-d-screenshot.png") center/cover no-repeat}.hero-content{padding:28px}.hero h1{font-size:48px}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.search{display:none}.grid{grid-template-columns:1fr}.hero h1{font-size:44px}.hero p{font-size:14px}.footer{flex-direction:column}.section-head{align-items:flex-start;gap:7px;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+  <a class="brand" href="/"><span class="mark">KG</span><span>Kaise Games<small>Biblioteca PT-BR</small></span></a>
+  <nav class="nav"><a class="active" href="/">Início</a><a href="#biblioteca">Biblioteca</a><a href="#sobre">Sobre</a></nav>
+  <label class="search">⌕ <input id="q" placeholder="Buscar jogos..." autocomplete="off"></label>
+</header>
+
+<section class="hero">
+  <div class="hero-content">
+    <span class="eyebrow">PT-BR completo · Open source</span>
+    <h1>Lix</h1>
+    <p>Um puzzle de estratégia com mais de 700 fases, editor de níveis e multiplayer. Esta edição usa o jogo original e substitui apenas a localização pela versão brasileira validada.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://lix.kaise.space">Ver jogo</a>
+      <a class="btn secondary" href="https://github.com/xivinims/Kairo-SDK/releases/download/lix-ptbr-v0.10.36/Lix-0.10.36-PTBR-Windows-x64.zip">Baixar PT-BR</a>
+    </div>
+    <div class="meta"><span class="pill">Windows x64</span><span class="pill">v0.10.36</span><span class="pill">+700 fases</span><span class="pill">CC0 + licenças incluídas</span></div>
+  </div>
+</section>
+
+<section class="section" id="biblioteca">
+  <div class="section-head"><div><h2>Biblioteca PT-BR</h2><p>Somente jogos reais com redistribuição permitida e builds verificadas.</p></div><p id="count">1 jogo disponível</p></div>
+  <div class="grid" id="grid">
+    <a class="card game" data-search="lix puzzle estratégia multiplayer editor windows pt-br" href="https://lix.kaise.space">
+      <div class="cover"><img src="https://lixgame.com/img/lix-d-screenshot.png" alt="Captura de tela do Lix"><span class="status">PT-BR COMPLETO</span></div>
+      <div class="card-body"><h3>Lix</h3><p>Puzzle de estratégia com centenas de fases, editor e multiplayer.</p><div class="card-meta"><span>Windows x64</span><span>v0.10.36</span></div></div>
+    </a>
+  </div>
+  <div class="empty" id="empty">Nenhum jogo encontrado nessa busca.</div>
+</section>
+
+<section class="section" id="sobre">
+  <div class="section-head"><div><h2>Como a biblioteca funciona</h2><p>Sem loja, sem preço e sem redistribuir conteúdo que não permita isso.</p></div></div>
+  <div class="grid">
+    <div class="card"><div class="card-body"><h3>1. Projeto original</h3><p>Usamos o código ou a release oficial do jogo quando a licença permite modificação e redistribuição.</p></div></div>
+    <div class="card"><div class="card-body"><h3>2. Tradução real</h3><p>Alteramos os arquivos de localização do jogo, preservando IDs, placeholders e estrutura.</p></div></div>
+    <div class="card"><div class="card-body"><h3>3. Validação</h3><p>Chaves, placeholders e build são verificados antes da publicação.</p></div></div>
+    <div class="card"><div class="card-body"><h3>4. Download</h3><p>Cada jogo recebe uma página própria e um download da build PT-BR com créditos e licença.</p></div></div>
+  </div>
+</section>
+
+<footer class="footer"><span>Kaise Games · Biblioteca comunitária de traduções PT-BR</span><span>Os jogos continuam pertencendo aos seus respectivos autores e licenças.</span></footer>
+</div>
+<script>
+const q=document.querySelector("#q"),games=[...document.querySelectorAll(".game")],empty=document.querySelector("#empty"),count=document.querySelector("#count");
+q?.addEventListener("input",()=>{const value=q.value.trim().toLowerCase();let shown=0;games.forEach(card=>{const ok=!value||card.dataset.search.includes(value);card.style.display=ok?"":"none";if(ok)shown++});empty.style.display=shown?"none":"block";count.textContent=shown+(shown===1?" jogo disponível":" jogos disponíveis")});
+</script>
+</body>
+</html>
