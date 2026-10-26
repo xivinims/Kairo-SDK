@@ -13,6 +13,9 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Volume2,
+  Mic2,
+  ExternalLink,
 } from "lucide-react";
 import {
   GAMES,
@@ -24,11 +27,16 @@ import {
   localizationProgress,
   parseJsonStrings,
   validateTranslation,
+  exportDubbingManifest,
+  parseDubbingJson,
+  SAMPLE_DUBBING,
+  VOICE_LOCALIZATION_CANDIDATES,
+  type DubbingProject,
   type GameEntry,
   type LocalizationProject,
 } from "@/lib/gamehub";
 
-type View = "catalog" | "localize" | "about";
+type View = "catalog" | "localize" | "dubbing" | "about";
 type Scene = { speaker: string; text: string; choices?: { label: string; next: number; affinity?: number }[] };
 
 const ROMANCE_SCENES: Scene[] = [
@@ -151,6 +159,51 @@ function LocalizationLab() {
   </section>;
 }
 
+
+function DubbingLab() {
+  const [project,setProject]=useState<DubbingProject>(SAMPLE_DUBBING);
+  const [notice,setNotice]=useState("");
+  const ready=project.cues.filter(c=>c.ptBR.trim()).length;
+
+  function importDubbing(file:File){
+    const reader=new FileReader();
+    reader.onload=()=>{try{const parsed=parseDubbingJson(String(reader.result));setProject(parsed);setNotice(`${parsed.cues.length} falas carregadas.`)}catch{setNotice("Não consegui ler esse roteiro de dublagem.")}};
+    reader.readAsText(file);
+  }
+  function preview(text:string){
+    if(!("speechSynthesis" in window)||!text.trim())return;
+    window.speechSynthesis.cancel();
+    const utter=new SpeechSynthesisUtterance(text);
+    utter.lang="pt-BR";
+    utter.rate=.96;
+    window.speechSynthesis.speak(utter);
+  }
+  function downloadManifest(){
+    const blob=new Blob([exportDubbingManifest(project)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=project.name.replace(/\W+/g,"-").toLowerCase()+"-dublagem-ptbr.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  return <section className="dub-lab">
+    <div className="lab-head">
+      <div><span className="kicker">DUBLAGEM PT-BR</span><h2>Troca de voz cena por cena.</h2><p>Importe um roteiro autorizado, adapte as falas e gere um manifesto que mapeia cada linha ao áudio PT-BR correspondente.</p></div>
+      <label className="import-button"><Mic2 size={16}/> Importar roteiro<input type="file" accept=".json,application/json" hidden onChange={e=>e.target.files?.[0]&&importDubbing(e.target.files[0])}/></label>
+    </div>
+    <div className="lab-stats"><div><b>{project.cues.length}</b><span>falas</span></div><div><b>{ready}</b><span>adaptadas</span></div><div><b>{new Set(project.cues.map(c=>c.character)).size}</b><span>personagens</span></div><div><b>pt-BR</b><span>dublagem</span></div></div>
+    {notice&&<div className="notice">{notice}</div>}
+    <div className="candidate-strip">{VOICE_LOCALIZATION_CANDIDATES.map(game=><article key={game.id}><div><b>{game.title}</b><span>{game.engine} · {game.voiceActing}</span></div><p>{game.license}</p><a href={game.sourceUrl} target="_blank" rel="noreferrer">Fonte <ExternalLink size={12}/></a></article>)}</div>
+    <div className="dub-toolbar"><p>Prévia usa a voz PT-BR disponível no aparelho. O manifesto final pode apontar para arquivos de dublagem produzidos externamente.</p><button onClick={downloadManifest}><Download size={15}/> Exportar manifesto</button></div>
+    <div className="dub-list">{project.cues.map((cue,index)=><div className="dub-row" key={cue.id}>
+      <div className="dub-meta"><span>{index+1}</span><b>{cue.character}</b><small>{cue.scene}</small></div>
+      <div className="dub-source"><small>INGLÊS</small><p>{cue.sourceText}</p></div>
+      <div className="dub-target"><small>PORTUGUÊS BRASIL</small><textarea value={cue.ptBR} onChange={e=>setProject(p=>({...p,cues:p.cues.map(c=>c.id===cue.id?{...c,ptBR:e.target.value}:c)}))}/><div className="dub-actions"><select value={cue.voice} onChange={e=>setProject(p=>({...p,cues:p.cues.map(c=>c.id===cue.id?{...c,voice:e.target.value as typeof cue.voice}:c)}))}><option value="neutra">Neutra</option><option value="clara">Clara</option><option value="suave">Suave</option><option value="grave">Grave</option><option value="energética">Energética</option></select><button onClick={()=>preview(cue.ptBR)}><Volume2 size={14}/> Prévia</button></div></div>
+    </div>)}</div>
+  </section>;
+}
+
 export function KairoGameHub() {
   const [view,setView]=useState<View>("catalog");
   const [activeGame,setActiveGame]=useState<GameEntry|null>(null);
@@ -167,12 +220,14 @@ export function KairoGameHub() {
     <aside className="hub-sidebar"><div className="hub-brand"><div>K</div><span>Kairo <b>GameHub</b></span></div><nav>
       <button className={view==="catalog"?"active":""} onClick={()=>setView("catalog")}><Gamepad2/> Jogos</button>
       <button className={view==="localize"?"active":""} onClick={()=>setView("localize")}><Languages/> Localizar</button>
+      <button className={view==="dubbing"?"active":""} onClick={()=>setView("dubbing")}><Mic2/> Dublar</button>
       <button className={view==="about"?"active":""} onClick={()=>setView("about")}><BookOpen/> Projeto</button>
     </nav><div className="side-note"><ShieldCheck size={17}/><p>Conteúdo próprio ou autorizado. Tradução sem redistribuir arquivos protegidos de terceiros.</p></div></aside>
     <main className="hub-main">
-      <header className="hub-top"><div><span className="kicker">KAIRO SDK · PT-BR FIRST</span><h1>{view==="catalog"?"Biblioteca":view==="localize"?"Localização":"Projeto"}</h1></div><div className="pt-badge"><Languages size={15}/> Português Brasil</div></header>
+      <header className="hub-top"><div><span className="kicker">KAIRO SDK · PT-BR FIRST</span><h1>{view==="catalog"?"Biblioteca":view==="localize"?"Localização":view==="dubbing"?"Dublagem":"Projeto"}</h1></div><div className="pt-badge"><Languages size={15}/> Português Brasil</div></header>
       {view==="catalog"&&<><section className="hero-game"><div><span className="hero-pill"><Sparkles size={14}/> Original Kairo</span><h2>Jogos em português<br/><em>desde a primeira linha.</em></h2><p>Do arcade leve à narrativa longa. O mesmo hub organiza, executa e prepara pacotes de localização para projetos grandes.</p></div><div className="hero-orb"><span>BR</span></div></section><div className="catalog-head"><div><h2>Jogos disponíveis</h2><p>{GAMES.length} projetos na biblioteca</p></div></div><section className="hub-grid">{GAMES.map(g=><GameCard key={g.id} game={g} onPlay={openGame}/>)}</section></>}
       {view==="localize"&&<LocalizationLab/>}
+      {view==="dubbing"&&<DubbingLab/>}
       {view==="about"&&<section className="about-panel"><span className="kicker">NOVA DIREÇÃO</span><h2>Kairo agora também é uma plataforma de jogos e localização.</h2><p>O SDK foi reorganizado para hospedar jogos próprios, experiências narrativas, projetos grandes por pacotes e um fluxo de tradução PT-BR com validação de placeholders.</p><div className="about-grid"><div><CheckCircle2/><b>Jogos originais</b><span>Sem depender de assets externos.</span></div><div><Languages/><b>PT-BR nativo</b><span>Interface e conteúdo em português.</span></div><div><ShieldCheck/><b>Localização segura</b><span>Preserva tokens e trabalha com arquivos autorizados.</span></div></div></section>}
     </main>
   </div>;
