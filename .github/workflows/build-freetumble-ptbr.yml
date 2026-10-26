@@ -77,8 +77,16 @@ jobs:
             cp -R "upstream/$d" package/
           done
 
-          ldd upstream/build/freetumble.exe | awk '/ucrt64/ {print $3}' | sort -u | while read -r dll; do
+          cp -n sfml2-install/bin/*.dll package/ || true
+          export PATH="$PWD/sfml2-install/bin:$PATH"
+          ldd upstream/build/freetumble.exe | awk '/ucrt64|sfml2-install/ {print $3}' | sort -u | while read -r dll; do
             [ -f "$dll" ] && cp -n "$dll" package/
+          done
+
+          for dll in package/*.dll; do
+            ldd "$dll" 2>/dev/null | awk '/ucrt64/ {print $3}' | sort -u | while read -r dep; do
+              [ -f "$dep" ] && cp -n "$dep" package/
+            done
           done
 
           cat > package/TRADUCAO-PTBR.txt <<'TXT'
