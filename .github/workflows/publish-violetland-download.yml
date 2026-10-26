@@ -1,0 +1,65 @@
+name: Publish Violetland download
+
+on:
+  push:
+    branches: [game-library]
+    paths:
+      - ".github/workflows/publish-violetland-download.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with push credentials
+        uses: actions/checkout@v4
+
+      - name: Download validated Violetland artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Violetland-0.5-PTBR-Windows-x64
+          path: artifact
+          github-token: ${{ github.token }}
+          repository: xivinims/Kairo-SDK
+          run-id: 40363891552
+
+      - name: Verify artifact contents
+        run: |
+          test -f artifact/Violetland-0.5-PTBR-Windows-x64.zip
+          test -f artifact/Violetland-0.5-PTBR-Windows-x64.zip.sha256
+          cd artifact
+          sha256sum -c Violetland-0.5-PTBR-Windows-x64.zip.sha256
+
+      - name: Publish isolated binary branch
+        run: |
+          mkdir -p "$RUNNER_TEMP/violetland-download"
+          cp artifact/Violetland-0.5-PTBR-Windows-x64.zip "$RUNNER_TEMP/violetland-download/"
+          cp artifact/Violetland-0.5-PTBR-Windows-x64.zip.sha256 "$RUNNER_TEMP/violetland-download/"
+          cp artifact/translated-entry-count.txt "$RUNNER_TEMP/violetland-download/"
+
+          git config user.name "Kaise Games Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan download-violetland
+          git rm -rf .
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp "$RUNNER_TEMP/violetland-download/"* .
+          cat > README.md <<'MD'
+          # Violetland 0.5 PT-BR
+
+          Build comunitária Windows x64 do Violetland 0.5 em Português (Brasil).
+
+          Projeto original: https://github.com/ooxi/violetland
+
+          Código: GPL-3.0.
+          Assets: CC BY-SA 3.0.
+          A tradução e a automação de build estão na branch game-library deste repositório.
+
+          Esta não é uma release oficial do Violetland.
+          MD
+          git add .
+          git commit -m "publish: Violetland 0.5 PT-BR Windows x64"
+          git push --force origin HEAD:download-violetland
