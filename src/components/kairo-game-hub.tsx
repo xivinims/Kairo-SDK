@@ -31,6 +31,9 @@ import {
   parseDubbingJson,
   SAMPLE_DUBBING,
   VOICE_LOCALIZATION_CANDIDATES,
+  AAA_LOCALIZATION_PROFILES,
+  buildAaaProjectTemplate,
+  type AaaLocalizationProfile,
   type DubbingProject,
   type GameEntry,
   type LocalizationProject,
@@ -160,6 +163,27 @@ function LocalizationLab() {
 }
 
 
+
+function AaaProfiles() {
+  function downloadTemplate(profile:AaaLocalizationProfile){
+    const blob=new Blob([JSON.stringify(buildAaaProjectTemplate(profile),null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`${profile.id}-ptbr-kairo-project.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  return <section className="aaa-profiles">
+    <div className="aaa-head"><span className="kicker">JOGOS GRANDES · PERFIS OFICIAIS</span><h3>Alvos para localização completa</h3><p>Esses perfis trabalham contra uma cópia instalada legalmente e geram apenas o mod PT-BR. O Kairo não embute nem redistribui os arquivos originais do jogo.</p></div>
+    <div className="aaa-grid">{AAA_LOCALIZATION_PROFILES.sort((a,b)=>a.priority-b.priority).map(profile=><article key={profile.id}>
+      <div className="aaa-rank">{profile.priority}</div>
+      <div><h4>{profile.title}</h4><p>{profile.ratingNote}</p></div>
+      <dl><div><dt>Ferramenta</dt><dd>{profile.officialTool}</dd></div><div><dt>Voz</dt><dd>{profile.voiceSupport}</dd></div><div><dt>Localização</dt><dd>{profile.localizationSupport}</dd></div></dl>
+      <div className="aaa-actions"><a href={profile.toolUrl} target="_blank" rel="noreferrer">Ferramenta oficial <ExternalLink size={12}/></a><button onClick={()=>downloadTemplate(profile)}><Download size={13}/> Criar projeto</button></div>
+    </article>)}</div>
+  </section>;
+}
+
 function DubbingLab() {
   const [project,setProject]=useState<DubbingProject>(SAMPLE_DUBBING);
   const [notice,setNotice]=useState("");
@@ -194,6 +218,7 @@ function DubbingLab() {
     </div>
     <div className="lab-stats"><div><b>{project.cues.length}</b><span>falas</span></div><div><b>{ready}</b><span>adaptadas</span></div><div><b>{new Set(project.cues.map(c=>c.character)).size}</b><span>personagens</span></div><div><b>pt-BR</b><span>dublagem</span></div></div>
     {notice&&<div className="notice">{notice}</div>}
+    <AaaProfiles/>
     <div className="candidate-strip">{VOICE_LOCALIZATION_CANDIDATES.map(game=><article key={game.id}><div><b>{game.title}</b><span>{game.engine} · {game.voiceActing}</span></div><p>{game.license}</p><a href={game.sourceUrl} target="_blank" rel="noreferrer">Fonte <ExternalLink size={12}/></a></article>)}</div>
     <div className="dub-toolbar"><p>Prévia usa a voz PT-BR disponível no aparelho. O manifesto final pode apontar para arquivos de dublagem produzidos externamente.</p><button onClick={downloadManifest}><Download size={15}/> Exportar manifesto</button></div>
     <div className="dub-list">{project.cues.map((cue,index)=><div className="dub-row" key={cue.id}>
