@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>2048 PT-BR — Kaise Games</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#faf8ef">
+  <link href="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/style/main.css" rel="stylesheet" type="text/css">
+  <style>
+    .score-container:after{content:"Pontuação"!important}
+    .best-container:after{content:"Recorde"!important}
+    .kaise-bar{max-width:500px;margin:18px auto -6px;padding:0 15px;display:flex;justify-content:space-between;gap:12px;align-items:center;font:600 12px/1.4 Arial,sans-serif;color:#8f7a66}
+    .kaise-bar a{color:#776e65;text-decoration:none}
+    .kaise-pill{padding:6px 9px;border-radius:999px;background:#eee4da}
+    @media(max-width:520px){.kaise-bar{margin-top:10px}}
+  </style>
+</head>
+<body>
+  <div class="kaise-bar">
+    <a href="https://jogos.kaise.space">← Kaise Games</a>
+    <span class="kaise-pill">2048 original · PT-BR</span>
+  </div>
+
+  <div class="container">
+    <div class="heading">
+      <h1 class="title">2048</h1>
+      <div class="scores-container">
+        <div class="score-container">0</div>
+        <div class="best-container">0</div>
+      </div>
+    </div>
+
+    <div class="above-game">
+      <p class="game-intro">Junte os números e chegue ao bloco <strong>2048!</strong></p>
+      <a class="restart-button">Novo jogo</a>
+    </div>
+
+    <div class="game-container">
+      <div class="game-message">
+        <p></p>
+        <div class="lower">
+          <a class="keep-playing-button">Continuar</a>
+          <a class="retry-button">Tentar novamente</a>
+        </div>
+      </div>
+
+      <div class="grid-container">
+        <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+        <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+        <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+        <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+      </div>
+
+      <div class="tile-container"></div>
+    </div>
+
+    <p class="game-explanation">
+      <strong class="important">Como jogar:</strong> use as <strong>setas do teclado</strong> ou deslize na tela para mover os blocos.
+      Quando dois blocos com o mesmo número se encostam, eles <strong>se juntam em um só!</strong>
+    </p>
+    <hr>
+    <p>
+      Esta versão usa o código original do 2048 de Gabriele Cirulli, licenciado sob MIT, com apenas os textos da interface adaptados para Português (Brasil).
+    </p>
+    <p>
+      <a href="https://github.com/gabrielecirulli/2048" target="_blank" rel="noopener">Projeto original</a>
+    </p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/bind_polyfill.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/classlist_polyfill.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/animframe_polyfill.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/keyboard_input_manager.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/html_actuator.js"></script>
+  <script>
+    HTMLActuator.prototype.message=function(won){
+      var type=won?"game-won":"game-over";
+      var message=won?"Você venceu!":"Fim de jogo!";
+      this.messageContainer.classList.add(type);
+      this.messageContainer.getElementsByTagName("p")[0].textContent=message;
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/grid.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/tile.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/local_storage_manager.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/game_manager.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/gabrielecirulli/2048@478b6ec346e3787f589e4af751378d06ded4cbbc/js/application.js"></script>
+</body>
+</html>
