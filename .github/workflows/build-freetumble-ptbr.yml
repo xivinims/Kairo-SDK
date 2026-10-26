@@ -1,0 +1,150 @@
+name: Build FreeTumble PT-BR
+
+on:
+  push:
+    branches: [game-library]
+    paths:
+      - "localizations/freetumble/**"
+      - ".github/workflows/build-freetumble-ptbr.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    env:
+      UPSTREAM_SHA: "f8b062d3e464ee9417444f84adf47313fa2fd016"
+      RELEASE_TAG: "freetumble-ptbr-v1.1"
+
+    steps:
+      - name: Checkout Kaise localization
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-sfml
+
+      - name: Fetch original FreeTumble source
+        shell: msys2 {0}
+        run: |
+          git clone https://github.com/akien-mga/freetumble.git upstream
+          cd upstream
+          git checkout "$UPSTREAM_SHA"
+          cd ..
+          cp localizations/freetumble/languages.h upstream/src/languages.h
+          cp localizations/freetumble/GameMain.cpp upstream/src/gameEngine/GameMain.cpp
+          cp localizations/freetumble/GfxEngine.cpp upstream/src/gfxEngine/GfxEngine.cpp
+
+      - name: Build Windows x64
+        shell: msys2 {0}
+        run: |
+          cd upstream
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build --parallel 2
+          test -f build/freetumble.exe
+
+      - name: Assemble portable package
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          mkdir -p package
+          cp upstream/build/freetumble.exe package/
+          cp upstream/FreeSansBold.ttf package/
+          cp upstream/reset_scores.dat package/
+          cp upstream/LICENSE.txt package/
+          cp upstream/README.md package/
+          cp upstream/CHANGELOG.md package/
+
+          for d in gfx music sfx skins tilesets; do
+            cp -R "upstream/$d" package/
+          done
+
+          ldd upstream/build/freetumble.exe | awk '/mingw64/ {print $3}' | sort -u | while read -r dll; do
+            [ -f "$dll" ] && cp -n "$dll" package/
+          done
+
+          cat > package/TRADUCAO-PTBR.txt <<'TXT'
+          FreeTumble 1.1 PT-BR - Kaise Games
+
+          Baseado no código-fonte original:
+          https://github.com/akien-mga/freetumble
+          Commit: f8b062d3e464ee9417444f84adf47313fa2fd016
+
+          Alterações:
+          - Português (Brasil) adicionado como quarto idioma.
+          - PT-BR selecionado por padrão na build Kaise.
+          - seleção de PT_BR persistida no arquivo de configuração.
+
+          Código e gráficos: GPLv3+.
+          Música e efeitos mantêm as licenças e atribuições descritas no README original.
+
+          Modificações disponíveis em:
+          https://github.com/xivinims/Kairo-SDK/tree/game-library/localizations/freetumble
+
+          Esta é uma build comunitária PT-BR e não uma release oficial do FreeTumble.
+          TXT
+
+          test -f package/freetumble.exe
+          test -d package/gfx
+          test -d package/music
+
+      - name: Validate PT-BR strings in source
+        shell: msys2 {0}
+        run: |
+          grep -q 'const int N_LANGUAGES=4' upstream/src/languages.h
+          grep -q 'const int LANG_PT_BR=3' upstream/src/languages.h
+          grep -q 'Português (Brasil)' upstream/src/languages.h
+          grep -q 'LANG_PT_BR' upstream/src/gameEngine/GameMain.cpp
+          grep -q 'language=LANG_PT_BR' upstream/src/gfxEngine/GfxEngine.cpp
+
+      - name: Create ZIP and hash
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "package/*" -DestinationPath "FreeTumble-1.1-PTBR-Windows-x64.zip" -CompressionLevel Optimal
+          $sha = (Get-FileHash "FreeTumble-1.1-PTBR-Windows-x64.zip" -Algorithm SHA256).Hash.ToLower()
+          "$sha  FreeTumble-1.1-PTBR-Windows-x64.zip" | Set-Content "FreeTumble-1.1-PTBR-Windows-x64.zip.sha256" -Encoding ASCII
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeTumble-1.1-PTBR-Windows-x64
+          path: |
+            FreeTumble-1.1-PTBR-Windows-x64.zip
+            FreeTumble-1.1-PTBR-Windows-x64.zip.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          @"
+          # FreeTumble 1.1 PT-BR
+
+          Build Windows x64 compilada a partir do código-fonte original do FreeTumble.
+
+          - Português (Brasil) adicionado como idioma completo da interface.
+          - PT-BR é o idioma padrão desta build.
+          - Código e gráficos sob GPLv3+.
+          - Demais atribuições preservadas conforme README original.
+
+          Projeto original: https://github.com/akien-mga/freetumble
+
+          Esta não é uma release oficial do FreeTumble.
+          "@ | Set-Content RELEASE_NOTES.md -Encoding UTF8
+
+          if (gh release view "$env:RELEASE_TAG" *> $null) {
+            gh release upload "$env:RELEASE_TAG" "FreeTumble-1.1-PTBR-Windows-x64.zip" "FreeTumble-1.1-PTBR-Windows-x64.zip.sha256" --clobber
+          } else {
+            gh release create "$env:RELEASE_TAG" "FreeTumble-1.1-PTBR-Windows-x64.zip" "FreeTumble-1.1-PTBR-Windows-x64.zip.sha256" --title "FreeTumble 1.1 PT-BR" --notes-file RELEASE_NOTES.md --target "$env:GITHUB_SHA"
+          }
