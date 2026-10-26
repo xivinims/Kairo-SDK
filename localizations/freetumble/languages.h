@@ -178,48 +178,16 @@ const std::wstring HELP_BONUS_SKULL[N_LANGUAGES]=
       L"Kann nur zerstört werden durch Bomben oder Blitze.", L"Só pode ser removida por um bônus especial." };
 
 const std::wstring CONSOLE[CONSOLE_MAX_LINES][N_LANGUAGES]={
-    {   L"FreeTumble",
-        L"FreeTumble",
-        L"FreeTumble"},
-
-    {   L"By Seby and Suiland (2009)",
-        L"Par Seby et Suiland (2009)",
-        L"Von Seby und Suiland (2009)"},
-
-    {   L"Maintained by Akien (2015-2016)",
-        L"Maintenu par Akien (2015-2016)",
-        L"Weiterentwickelt von Akien (2015-2016)"},
-
-    {   L"Click a game type to start playing",
-        L"Cliquer sur le type de jeu que vous souhaitez",
-        L"Klicken Sie den gewünschten Spieltyp an"},
-
-    {   L"Normal: Turn-based game",
-        L"Normal: Jeu au tour par tour",
-        L"Normal: Rundenbasiertes Spiel"},
-
-    {   L"Motion: Real-time game",
-        L"Motion: Jeu en temps réel",
-        L"Motion: Echtzeitspiel"},
-
-    {   L"Classic: Clear the grid",
-        L"Classic: Videz la grille",
-        L"Classic: Räumen Sie das Feld leer"},
-
-    {   L"Instructions",
-        L"Instructions",
-        L"Spielanleitung"},
-
-    {   L"Options",
-        L"Options",
-        L"Optionen"},
-
-    {   L"Credits",
-        L"Crédits",
-        L"Credits"},
-
-    {   L"Quit the game",
-        L"Quitter le jeu",
-        L"Spiel beenden"} };
+    {L"FreeTumble", L"FreeTumble", L"FreeTumble", L"FreeTumble"},
+    {L"By Seby and Suiland (2009)", L"Par Seby et Suiland (2009)", L"Von Seby und Suiland (2009)", L"Por Seby e Suiland (2009)"},
+    {L"Maintained by Akien (2015-2016)", L"Maintenu par Akien (2015-2016)", L"Weiterentwickelt von Akien (2015-2016)", L"Mantido por Akien (2015-2016)"},
+    {L"Click a game type to start playing", L"Cliquer sur le type de jeu que vous souhaitez", L"Klicken Sie den gewünschten Spieltyp an", L"Clique em um modo de jogo para começar"},
+    {L"Normal: Turn-based game", L"Normal: Jeu au tour par tour", L"Normal: Rundenbasiertes Spiel", L"Normal: jogo por turnos"},
+    {L"Motion: Real-time game", L"Motion: Jeu en temps réel", L"Motion: Echtzeitspiel", L"Motion: jogo em tempo real"},
+    {L"Classic: Clear the grid", L"Classic: Videz la grille", L"Classic: Räumen Sie das Feld leer", L"Classic: limpe o tabuleiro"},
+    {L"Instructions", L"Instructions", L"Spielanleitung", L"Instruções"},
+    {L"Options", L"Options", L"Optionen", L"Opções"},
+    {L"Credits", L"Crédits", L"Credits", L"Créditos"},
+    {L"Quit the game", L"Quitter le jeu", L"Spiel beenden", L"Sair do jogo"} };
 
 #endif // LANGUAGES_H_INCLUDED
