@@ -284,3 +284,136 @@ export function localizationProgress(rows: LocalizationRow[]) {
     percent: total ? Math.round((valid / total) * 100) : 0,
   };
 }
+
+
+export interface VoiceCandidate {
+  id: string;
+  title: string;
+  engine: string;
+  language: string;
+  voiceActing: string;
+  license: string;
+  notes: string;
+  sourceUrl: string;
+}
+
+export const VOICE_LOCALIZATION_CANDIDATES: VoiceCandidate[] = [
+  {
+    id: "epic-of-inanna",
+    title: "The Epic of Inanna",
+    engine: "Visual novel",
+    language: "Inglês",
+    voiceActing: "Total",
+    license: "CC BY-SA 4.0",
+    notes: "Projeto grande, ideal para testar localização e dublagem por capítulos.",
+    sourceUrl: "https://strategicthinking.itch.io/the-epic-of-inanna",
+  },
+  {
+    id: "quantangled",
+    title: "Quantangled",
+    engine: "Unity",
+    language: "Inglês",
+    voiceActing: "Personagem narrativo",
+    license: "Código MIT · Assets CC BY 4.0",
+    notes: "Projeto curto e bom para validar substituição de voz e sincronização.",
+    sourceUrl: "https://victorghys.itch.io/quantangled",
+  },
+  {
+    id: "time-at-the-office",
+    title: "Time at the Office",
+    engine: "Godot",
+    language: "Inglês",
+    voiceActing: "Vários personagens",
+    license: "Código MIT · Assets CC BY 4.0",
+    notes: "Bom candidato para pipeline Godot e dublagem cena a cena.",
+    sourceUrl: "https://flooferland.itch.io/time-at-the-office",
+  },
+  {
+    id: "radio-truth",
+    title: "Radio Truth",
+    engine: "Godot",
+    language: "Inglês",
+    voiceActing: "Foco em áudio",
+    license: "Código GPLv2 · Assets CC BY 4.0",
+    notes: "Especialmente útil para testar um jogo em que áudio é parte central da experiência.",
+    sourceUrl: "https://nrgs.itch.io/radio-truth",
+  },
+];
+
+export type DubVoiceStyle = "clara" | "suave" | "grave" | "energética" | "neutra";
+
+export interface DubbingCue {
+  id: string;
+  scene: string;
+  character: string;
+  sourceText: string;
+  ptBR: string;
+  voice: DubVoiceStyle;
+  sourceAudio?: string;
+  targetAudio?: string;
+  durationMs?: number;
+  notes?: string;
+}
+
+export interface DubbingProject {
+  name: string;
+  targetLocale: "pt-BR";
+  cues: DubbingCue[];
+}
+
+export function parseDubbingJson(input: string): DubbingProject {
+  const raw = JSON.parse(input) as {
+    name?: string;
+    cues?: Array<Record<string, unknown>>;
+  };
+  const cues = Array.isArray(raw.cues) ? raw.cues.map((cue, index) => ({
+    id: String(cue.id ?? `cue-${index + 1}`),
+    scene: String(cue.scene ?? "Cena"),
+    character: String(cue.character ?? "Narrador"),
+    sourceText: String(cue.sourceText ?? cue.text ?? ""),
+    ptBR: String(cue.ptBR ?? ""),
+    voice: (["clara","suave","grave","energética","neutra"].includes(String(cue.voice)) ? String(cue.voice) : "neutra") as DubVoiceStyle,
+    sourceAudio: cue.sourceAudio ? String(cue.sourceAudio) : undefined,
+    targetAudio: cue.targetAudio ? String(cue.targetAudio) : undefined,
+    durationMs: typeof cue.durationMs === "number" ? cue.durationMs : undefined,
+    notes: cue.notes ? String(cue.notes) : undefined,
+  })) : [];
+  return { name: raw.name ?? "Projeto de dublagem", targetLocale: "pt-BR", cues };
+}
+
+export function exportDubbingManifest(project: DubbingProject) {
+  return JSON.stringify({
+    format: "kairo-dubbing-manifest",
+    version: 1,
+    targetLocale: "pt-BR",
+    project: project.name,
+    generatedAt: new Date().toISOString(),
+    cues: project.cues.map((cue) => ({
+      ...cue,
+      ready: Boolean(cue.ptBR.trim()),
+    })),
+  }, null, 2);
+}
+
+export const SAMPLE_DUBBING: DubbingProject = {
+  name: "Demo de dublagem PT-BR",
+  targetLocale: "pt-BR",
+  cues: [
+    {
+      id: "intro-001",
+      scene: "Abertura",
+      character: "Nara",
+      sourceText: "You made it. I thought the storm would delay you.",
+      ptBR: "Você chegou. Achei que a tempestade fosse atrasar você.",
+      voice: "suave",
+    },
+    {
+      id: "intro-002",
+      scene: "Abertura",
+      character: "Narrador",
+      sourceText: "The station crossed the night in silence.",
+      ptBR: "A estação atravessou a noite em silêncio.",
+      voice: "grave",
+    },
+  ],
+};
