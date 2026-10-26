@@ -13,74 +13,111 @@ permissions:
 
 jobs:
   package:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     env:
       GAME_VERSION: "0.5"
       RELEASE_TAG: "violetland-ptbr-v0.5"
-      SOURCE_URL: "https://github.com/ooxi/violetland/releases/download/0.5/violetland-windows-amd64.zip"
+
     steps:
       - name: Checkout Kaise localization
         uses: actions/checkout@v4
 
-      - name: Install gettext
-        run: sudo apt-get update && sudo apt-get install -y gettext zip unzip
+      - name: Setup MSYS2 build environment
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            make
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-SDL
+            mingw-w64-x86_64-SDL_image
+            mingw-w64-x86_64-SDL_ttf
+            mingw-w64-x86_64-SDL_mixer
+            mingw-w64-x86_64-gettext
+            mingw-w64-x86_64-pkgconf
 
-      - name: Download official Violetland Windows x64 release
+      - name: Fetch original Violetland source
+        shell: msys2 {0}
         run: |
-          curl -L --fail --retry 3 "$SOURCE_URL" -o violetland-original.zip
-          sha256sum violetland-original.zip | tee SOURCE-SHA256.txt
+          git clone --recurse-submodules --branch "$GAME_VERSION" --depth 1 https://github.com/ooxi/violetland.git upstream
+          cp localizations/violetland/pt_BR.po upstream/po/pt_BR.po
 
-      - name: Extract official package
+      - name: Build original game with PT-BR
+        shell: msys2 {0}
         run: |
-          mkdir package
-          unzip -q violetland-original.zip -d package
-          echo "Existing locale files:"
-          find package -type f -name 'violetland.mo' -print | sort
+          cd upstream
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLOCALE_INSTALL_DIR=locale
+          cmake --build build --parallel 2
+          test -f build/violetland.exe
+          msgfmt --check --check-format po/pt_BR.po -o pt_BR.mo
 
-      - name: Compile Brazilian Portuguese catalogue
+      - name: Assemble portable Windows package
+        shell: msys2 {0}
         run: |
-          msgfmt --check --check-format             localizations/violetland/pt_BR.po             -o violetland.mo
+          set -euxo pipefail
+          mkdir -p package
+          cp upstream/build/violetland.exe package/
+          cp upstream/start.cmd package/
+          cp upstream/README.md package/
+          cp upstream/README_RU.TXT package/
+          cp upstream/LICENSE.CODE package/
+          cp upstream/LICENSE.ASSETS package/
+          cp upstream/icon-light.png package/
 
-      - name: Inject PT-BR into official package
-        shell: bash
-        run: |
-          existing="$(find package -type f -name 'violetland.mo' | head -1)"
-          if [ -z "$existing" ]; then
-            echo "No existing violetland.mo found in official package." >&2
-            exit 1
-          fi
+          for d in fonts sounds images monsters weapon music; do
+            cp -R "upstream/$d" package/
+          done
 
-          # Existing path is expected to look like .../locale/<lang>/LC_MESSAGES/violetland.mo.
-          locale_root="$(dirname "$(dirname "$(dirname "$existing")")")"
-          target="$locale_root/pt_BR/LC_MESSAGES"
-          mkdir -p "$target"
-          cp violetland.mo "$target/violetland.mo"
+          mkdir -p package/locale/pt_BR/LC_MESSAGES
+          cp upstream/pt_BR.mo package/locale/pt_BR/LC_MESSAGES/violetland.mo
+
+          ldd upstream/build/violetland.exe | awk '/mingw64/ {print $3}' | sort -u | while read -r dll; do
+            [ -f "$dll" ] && cp -n "$dll" package/
+          done
+
+          printf '%s\r\n' '@echo off' 'cd /d "%~dp0"' 'set LANG=pt_BR.UTF-8' 'set LANGUAGE=pt_BR' 'violetland.exe' > package/INICIAR-VIOLETLAND-PTBR.cmd
 
           cat > package/TRADUCAO-PTBR.txt <<'TXT'
           Violetland 0.5 PT-BR - Kaise Games
 
-          Base: pacote oficial Windows x64 do projeto ooxi/violetland.
-          Alteração: catálogo de interface em Português (Brasil).
-          O executável, assets, sons, músicas e demais arquivos permanecem do pacote oficial.
+          Compilado a partir do código-fonte original do tag 0.5:
+          https://github.com/ooxi/violetland/tree/0.5
 
-          Código: GPL-3.0.
-          Assets: CC BY-SA 3.0, conforme LICENSE.ASSETS do projeto original.
+          Alteração:
+          - catálogo gettext pt_BR completo
+          - 114/114 mensagens traduzidas
+          - placeholders de formatação preservados
 
-          Projeto original:
-          https://github.com/ooxi/violetland
+          Código: GNU GPL v3
+          Assets: Creative Commons BY-SA 3.0
 
-          Esta é uma build comunitária PT-BR, não uma release oficial do projeto Violetland.
+          Tradução e automação da build:
+          https://github.com/xivinims/Kairo-SDK/tree/game-library/localizations/violetland
+
+          Esta é uma build comunitária PT-BR e não uma release oficial do Violetland.
           TXT
 
-          test -f "$target/violetland.mo"
-          echo "PT-BR catalogue installed at $target/violetland.mo"
+          test -f package/violetland.exe
+          test -f package/locale/pt_BR/LC_MESSAGES/violetland.mo
 
-      - name: Package translated game
+      - name: Smoke-check package structure
+        shell: msys2 {0}
         run: |
-          cd package
-          zip -qr ../Violetland-0.5-PTBR-Windows-x64.zip .
-          cd ..
-          sha256sum Violetland-0.5-PTBR-Windows-x64.zip | tee Violetland-0.5-PTBR-Windows-x64.zip.sha256
+          ls -lh package/violetland.exe
+          msgunfmt package/locale/pt_BR/LC_MESSAGES/violetland.mo | grep -c '^msgid ' | tee translated-entry-count.txt
+          find package -maxdepth 1 -iname '*.dll' | wc -l
+
+      - name: Create release ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "package/*" -DestinationPath "Violetland-0.5-PTBR-Windows-x64.zip" -CompressionLevel Optimal
+          $sha = (Get-FileHash "Violetland-0.5-PTBR-Windows-x64.zip" -Algorithm SHA256).Hash.ToLower()
+          "$sha  Violetland-0.5-PTBR-Windows-x64.zip" | Set-Content "Violetland-0.5-PTBR-Windows-x64.zip.sha256" -Encoding ASCII
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -89,31 +126,32 @@ jobs:
           path: |
             Violetland-0.5-PTBR-Windows-x64.zip
             Violetland-0.5-PTBR-Windows-x64.zip.sha256
-            SOURCE-SHA256.txt
+            translated-entry-count.txt
           if-no-files-found: error
 
       - name: Publish GitHub release
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > RELEASE_NOTES.md <<'MD'
+          @"
           # Violetland 0.5 PT-BR
 
-          Build comunitária baseada no ZIP Windows x64 oficial do Violetland 0.5.
+          Build Windows x64 compilada a partir do código-fonte original do Violetland 0.5.
 
-          - 114/114 textos do catálogo traduzidos.
-          - Nenhuma chave ausente.
-          - Placeholders de formatação validados.
-          - Executável e assets vêm do pacote oficial.
-          - Código GPL-3.0 e assets CC BY-SA 3.0 conforme o projeto original.
+          - 114/114 mensagens traduzidas para Português (Brasil).
+          - Placeholders validados com gettext.
+          - Código-fonte da modificação disponível na branch game-library.
+          - Código original sob GPL-3.0.
+          - Assets sob CC BY-SA 3.0.
 
           Projeto original: https://github.com/ooxi/violetland
 
           Esta não é uma release oficial do Violetland.
-          MD
+          "@ | Set-Content RELEASE_NOTES.md -Encoding UTF8
 
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG"               Violetland-0.5-PTBR-Windows-x64.zip               Violetland-0.5-PTBR-Windows-x64.zip.sha256               SOURCE-SHA256.txt --clobber
-          else
-            gh release create "$RELEASE_TAG"               Violetland-0.5-PTBR-Windows-x64.zip               Violetland-0.5-PTBR-Windows-x64.zip.sha256               SOURCE-SHA256.txt               --title "Violetland 0.5 PT-BR"               --notes-file RELEASE_NOTES.md               --target "$GITHUB_SHA"
-          fi
+          if (gh release view "$env:RELEASE_TAG" *> $null) {
+            gh release upload "$env:RELEASE_TAG" "Violetland-0.5-PTBR-Windows-x64.zip" "Violetland-0.5-PTBR-Windows-x64.zip.sha256" --clobber
+          } else {
+            gh release create "$env:RELEASE_TAG" "Violetland-0.5-PTBR-Windows-x64.zip" "Violetland-0.5-PTBR-Windows-x64.zip.sha256" --title "Violetland 0.5 PT-BR" --notes-file RELEASE_NOTES.md --target "$env:GITHUB_SHA"
+          }
