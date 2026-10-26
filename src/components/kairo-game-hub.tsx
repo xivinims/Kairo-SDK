@@ -18,7 +18,10 @@ import {
   GAMES,
   SAMPLE_LOCALIZATION,
   chunkRows,
+  buildLocalizedJson,
+  detectEngineProfiles,
   exportTranslationPack,
+  localizationProgress,
   parseJsonStrings,
   validateTranslation,
   type GameEntry,
@@ -116,22 +119,32 @@ function LocalizationLab() {
   const [project,setProject]=useState<LocalizationProject>(SAMPLE_LOCALIZATION);
   const [chunkSize,setChunkSize]=useState(200);
   const [notice,setNotice]=useState("");
+  const [sourceJson,setSourceJson]=useState("");
+  const [engineHints,setEngineHints]=useState<ReturnType<typeof detectEngineProfiles>>([]);
   const chunks=useMemo(()=>chunkRows(project.rows,chunkSize),[project.rows,chunkSize]);
   const invalid=project.rows.filter(r=>r.ptBR && !validateTranslation(r.source,r.ptBR).ok).length;
+  const progress=useMemo(()=>localizationProgress(project.rows),[project.rows]);
 
   function importJson(file: File) {
     const reader=new FileReader();
-    reader.onload=()=>{try{const rows=parseJsonStrings(String(reader.result));setProject({name:file.name,sourceLocale:"auto",targetLocale:"pt-BR",rows,glossary:{}});setNotice(`${rows.length} textos encontrados.`)}catch{setNotice("Não consegui ler esse JSON.")}};
+    reader.onload=()=>{try{const raw=String(reader.result);const rows=parseJsonStrings(raw);setSourceJson(raw);setEngineHints(detectEngineProfiles([file.name]));setProject({name:file.name,sourceLocale:"auto",targetLocale:"pt-BR",rows,glossary:{}});setNotice(`${rows.length} textos encontrados. Estrutura original preservada para exportação localizada.`)}catch{setNotice("Não consegui ler esse JSON.")}};
     reader.readAsText(file);
   }
   function downloadPack(){
     const blob=new Blob([exportTranslationPack(project)],{type:"application/json"});
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`${project.name.replace(/\W+/g,"-").toLowerCase()}-ptbr.kairo-loc.json`;a.click();URL.revokeObjectURL(a.href);
   }
+  function downloadLocalizedJson(){
+    if(!sourceJson)return;
+    const localized=buildLocalizedJson(sourceJson,project.rows);
+    const blob=new Blob([localized],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=project.name.replace(/\.json$/i,"")+"-pt-BR.json";a.click();URL.revokeObjectURL(a.href);
+  }
   return <section className="lab">
     <div className="lab-head"><div><span className="kicker">LABORATÓRIO DE LOCALIZAÇÃO</span><h2>Traduzir sem quebrar o jogo.</h2><p>Importe textos autorizados, trabalhe por blocos e valide variáveis antes de exportar o pacote PT-BR.</p></div><label className="import-button"><Upload size={16}/> Importar JSON<input type="file" accept=".json,application/json" hidden onChange={e=>e.target.files?.[0]&&importJson(e.target.files[0])}/></label></div>
-    <div className="lab-stats"><div><b>{project.rows.length}</b><span>strings</span></div><div><b>{chunks.length}</b><span>blocos</span></div><div><b>{invalid}</b><span>alertas</span></div><div><b>pt-BR</b><span>destino</span></div></div>
-    <div className="lab-toolbar"><label>Strings por bloco <input type="number" min={25} max={1000} value={chunkSize} onChange={e=>setChunkSize(+e.target.value||200)}/></label><button onClick={downloadPack}><Download size={15}/> Exportar pacote</button></div>
+    <div className="lab-stats"><div><b>{project.rows.length}</b><span>strings</span></div><div><b>{chunks.length}</b><span>blocos</span></div><div><b>{invalid}</b><span>alertas</span></div><div><b>{progress.percent}%</b><span>válido em pt-BR</span></div></div>
+    {engineHints.length>0&&<div className="engine-hints">{engineHints.map(engine=><span key={engine.id}><b>{engine.name}</b> · {engine.confidence}</span>)}</div>}
+    <div className="lab-toolbar"><label>Strings por bloco <input type="number" min={25} max={1000} value={chunkSize} onChange={e=>setChunkSize(+e.target.value||200)}/></label><div className="lab-actions"><button onClick={downloadPack}><Download size={15}/> Pacote Kairo</button><button disabled={!sourceJson} onClick={downloadLocalizedJson}><Download size={15}/> JSON localizado</button></div></div>
     {notice&&<div className="notice">{notice}</div>}
     <div className="translation-list">{project.rows.slice(0,80).map((row,i)=>{const check=row.ptBR?validateTranslation(row.source,row.ptBR):{ok:true,missing:[]};return <div className="translation-row" key={row.id}><div className="row-index">{i+1}</div><div><small>{row.context||row.id}</small><p>{row.source}</p></div><div><textarea value={row.ptBR} placeholder="Tradução em português..." onChange={e=>setProject(p=>({...p,rows:p.rows.map(r=>r.id===row.id?{...r,ptBR:e.target.value}:r)}))}/>{!check.ok&&<span className="token-error">Faltando: {check.missing.join(", ")}</span>}</div></div>})}</div>
     {project.rows.length>80&&<p className="lab-foot">Mostrando 80 linhas na interface. O pacote mantém todas as {project.rows.length}.</p>}
@@ -144,7 +157,11 @@ export function KairoGameHub() {
   if(activeGame?.id==="coracoes-em-orbita")return <RomanceGame onExit={()=>setActiveGame(null)}/>;
   if(activeGame?.id==="neon-runner-br")return <NeonGame onExit={()=>setActiveGame(null)}/>;
   if(activeGame?.id==="cidade-sem-nome")return <CityGame onExit={()=>setActiveGame(null)}/>;
-  if(activeGame?.id==="projeto-atlas"){setActiveGame(null);setView("localize")}
+
+  const openGame=(game:GameEntry)=>{
+    if(game.id==="projeto-atlas"){setView("localize");setActiveGame(null);return}
+    setActiveGame(game);
+  };
 
   return <div className="gamehub">
     <aside className="hub-sidebar"><div className="hub-brand"><div>K</div><span>Kairo <b>GameHub</b></span></div><nav>
@@ -154,7 +171,7 @@ export function KairoGameHub() {
     </nav><div className="side-note"><ShieldCheck size={17}/><p>Conteúdo próprio ou autorizado. Tradução sem redistribuir arquivos protegidos de terceiros.</p></div></aside>
     <main className="hub-main">
       <header className="hub-top"><div><span className="kicker">KAIRO SDK · PT-BR FIRST</span><h1>{view==="catalog"?"Biblioteca":view==="localize"?"Localização":"Projeto"}</h1></div><div className="pt-badge"><Languages size={15}/> Português Brasil</div></header>
-      {view==="catalog"&&<><section className="hero-game"><div><span className="hero-pill"><Sparkles size={14}/> Original Kairo</span><h2>Jogos em português<br/><em>desde a primeira linha.</em></h2><p>Do arcade leve à narrativa longa. O mesmo hub organiza, executa e prepara pacotes de localização para projetos grandes.</p></div><div className="hero-orb"><span>BR</span></div></section><div className="catalog-head"><div><h2>Jogos disponíveis</h2><p>{GAMES.length} projetos na biblioteca</p></div></div><section className="hub-grid">{GAMES.map(g=><GameCard key={g.id} game={g} onPlay={setActiveGame}/>)}</section></>}
+      {view==="catalog"&&<><section className="hero-game"><div><span className="hero-pill"><Sparkles size={14}/> Original Kairo</span><h2>Jogos em português<br/><em>desde a primeira linha.</em></h2><p>Do arcade leve à narrativa longa. O mesmo hub organiza, executa e prepara pacotes de localização para projetos grandes.</p></div><div className="hero-orb"><span>BR</span></div></section><div className="catalog-head"><div><h2>Jogos disponíveis</h2><p>{GAMES.length} projetos na biblioteca</p></div></div><section className="hub-grid">{GAMES.map(g=><GameCard key={g.id} game={g} onPlay={openGame}/>)}</section></>}
       {view==="localize"&&<LocalizationLab/>}
       {view==="about"&&<section className="about-panel"><span className="kicker">NOVA DIREÇÃO</span><h2>Kairo agora também é uma plataforma de jogos e localização.</h2><p>O SDK foi reorganizado para hospedar jogos próprios, experiências narrativas, projetos grandes por pacotes e um fluxo de tradução PT-BR com validação de placeholders.</p><div className="about-grid"><div><CheckCircle2/><b>Jogos originais</b><span>Sem depender de assets externos.</span></div><div><Languages/><b>PT-BR nativo</b><span>Interface e conteúdo em português.</span></div><div><ShieldCheck/><b>Localização segura</b><span>Preserva tokens e trabalha com arquivos autorizados.</span></div></div></section>}
     </main>
