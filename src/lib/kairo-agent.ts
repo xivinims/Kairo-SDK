@@ -106,7 +106,7 @@ async function generateWithGemini(messages: KairoMessage[], contentLevel: KairoC
   const answer = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
   if (!answer) throw new Error("empty");
 
-  const sources = (candidate.groundingMetadata?.groundingChunks ?? [])
+  const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
     .map((chunk) => chunk.web?.uri && chunk.web.title ? `[${chunk.web.title}](${chunk.web.uri})` : null)
     .filter((value): value is string => Boolean(value));
 
