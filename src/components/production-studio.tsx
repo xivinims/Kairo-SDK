@@ -49,6 +49,11 @@ import {
   parsePo,
   parseXliff,
 } from "@/lib/interchange";
+import {
+  rightsFor,
+  rightsLabel,
+  validateReleaseRights,
+} from "@/lib/rights-gate";
 
 function download(content:string,name:string,type="application/json"){
   const blob=new Blob([content],{type});
@@ -73,6 +78,8 @@ export function ProductionStudio() {
   const health=useMemo(()=>productionHealth(project),[project]);
   const subtitleIssues=useMemo(()=>runSubtitleQa(subtitles),[subtitles]);
   const matches=useMemo(()=>memoryQuery.trim()?findMemoryMatches(memoryQuery,memory,4):[],[memoryQuery,memory]);
+  const rights=useMemo(()=>rightsFor(project.gameId),[project.gameId]);
+  const releaseRights=useMemo(()=>validateReleaseRights(project.gameId),[project.gameId]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -189,6 +196,11 @@ export function ProductionStudio() {
     <div className="studio-game-picker">{AAA_LOCALIZATION_PROFILES.slice().sort((a,b)=>a.priority-b.priority).map(game=><button key={game.id} className={project.gameId===game.id?"active":""} onClick={()=>chooseGame(game.id)}>{game.title}</button>)}</div>
 
     <div className="studio-next"><Activity size={18}/><div><small>PRÓXIMA AÇÃO</small><p>{nextAction(project)}</p></div><button onClick={exportProject}><Download size={14}/> Manifesto</button></div>
+
+    <div className={`rights-banner ${releaseRights.ok?"ok":"blocked"}`}>
+      <div><b>{rights?rightsLabel(rights.status):"Direitos não verificados"}</b><span>{releaseRights.reason}</span></div>
+      <small>{rights?.distributionMode==="mod-only"?"Publicar somente como mod que exige o jogo original.":rights?.distributionMode==="license-defined"?"Seguir atribuição e condições da licença.":"Publicação bloqueada até a política ser confirmada."}</small>
+    </div>
 
     <div className="stage-grid">{project.stages.map(stage=><article key={stage.id}><div className="stage-icon">{stage.status==="concluido"?<CheckCircle2/>:<Clock3/>}</div><b>{stage.label}</b><span>{stageProgress(stage)}%</span><div className="stage-bar"><i style={{width:`${stageProgress(stage)}%`}}/></div></article>)}</div>
 
