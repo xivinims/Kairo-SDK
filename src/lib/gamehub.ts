@@ -187,3 +187,100 @@ export const SAMPLE_LOCALIZATION: LocalizationProject = {
     },
   ],
 };
+
+
+export interface EngineProfile {
+  id: "generic-json" | "rpg-maker" | "renpy" | "godot" | "unity";
+  name: string;
+  confidence: "alta" | "média" | "baixa";
+  description: string;
+}
+
+export function detectEngineProfiles(fileNames: string[]): EngineProfile[] {
+  const files = fileNames.map((name) => name.toLowerCase());
+  const found: EngineProfile[] = [];
+
+  const add = (profile: EngineProfile) => {
+    if (!found.some((item) => item.id === profile.id)) found.push(profile);
+  };
+
+  if (files.some((f) => /(^|\/)(data\/)?(system|actors|items|skills|map\d+)\.json$/.test(f))) {
+    add({
+      id: "rpg-maker",
+      name: "RPG Maker MV/MZ",
+      confidence: "alta",
+      description: "Arquivos JSON de banco de dados e mapas podem ser tratados em blocos.",
+    });
+  }
+  if (files.some((f) => f.endsWith(".rpy") || f.includes("renpy"))) {
+    add({
+      id: "renpy",
+      name: "Ren'Py",
+      confidence: "média",
+      description: "Scripts de visual novel. Diálogos e labels exigem preservação cuidadosa de sintaxe.",
+    });
+  }
+  if (files.some((f) => f.endsWith(".tscn") || f.endsWith(".tres") || f.endsWith(".translation"))) {
+    add({
+      id: "godot",
+      name: "Godot",
+      confidence: "média",
+      description: "Recursos textuais e tabelas de tradução do Godot.",
+    });
+  }
+  if (files.some((f) => f.includes("stringtable") || f.includes("localization") || f.endsWith(".resx"))) {
+    add({
+      id: "unity",
+      name: "Unity / String Tables",
+      confidence: "baixa",
+      description: "Perfil genérico para tabelas e recursos de localização exportáveis.",
+    });
+  }
+  if (files.some((f) => f.endsWith(".json"))) {
+    add({
+      id: "generic-json",
+      name: "JSON genérico",
+      confidence: "alta",
+      description: "Percorre objetos e arrays profundamente e substitui somente strings traduzidas.",
+    });
+  }
+
+  return found;
+}
+
+export function buildLocalizedJson(input: string, rows: LocalizationRow[]) {
+  const parsed = JSON.parse(input) as unknown;
+  const translations = new Map(
+    rows
+      .filter((row) => row.ptBR.trim() && validateTranslation(row.source, row.ptBR).ok)
+      .map((row) => [row.id, row.ptBR] as const),
+  );
+
+  const visit = (value: unknown, path: string): unknown => {
+    if (typeof value === "string") return translations.get(path) ?? value;
+    if (Array.isArray(value)) return value.map((item, index) => visit(item, `${path}[${index}]`));
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+          key,
+          visit(item, path ? `${path}.${key}` : key),
+        ]),
+      );
+    }
+    return value;
+  };
+
+  return JSON.stringify(visit(parsed, ""), null, 2);
+}
+
+export function localizationProgress(rows: LocalizationRow[]) {
+  const total = rows.length;
+  const translated = rows.filter((row) => row.ptBR.trim()).length;
+  const valid = rows.filter((row) => row.ptBR.trim() && validateTranslation(row.source, row.ptBR).ok).length;
+  return {
+    total,
+    translated,
+    valid,
+    percent: total ? Math.round((valid / total) * 100) : 0,
+  };
+}
