@@ -21,6 +21,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef WIN32
+#include <direct.h>
+#endif
 
 GameMain::GameMain()
 {
@@ -1010,8 +1013,7 @@ bool GameMain::dirExists(const char* path)
 void GameMain::makeDir(const char* path)
 {
 #ifdef WIN32
-#include <direct.h>
-    _wmkdir(path);
+    _mkdir(path);
 #else
     mkdir(path, 0755);
 #endif
