@@ -7,9 +7,9 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Kairo Agent" },
-      { name: "description", content: "Kairo — agente de IA." },
-      { name: "theme-color", content: "#09090b" },
+      { title: "Kairo GameHub — jogos e localização PT-BR" },
+      { name: "description", content: "Kairo GameHub: jogos originais em português e ferramentas de localização para PT-BR." },
+      { name: "theme-color", content: "#08090c" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
