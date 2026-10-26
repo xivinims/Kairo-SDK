@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lix PT-BR no navegador — Kaise Games</title>
+<meta name="description" content="Jogue o Lix original em Português do Brasil direto no navegador.">
+<style>
+:root{--bg:#0a0d11;--panel:#12171d;--line:#28313b;--text:#f5f7fa;--muted:#8f9ba8;--accent:#a7ff5b}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh;background:radial-gradient(circle at 72% -12%,rgba(167,255,91,.10),transparent 30%),#0a0d11}
+a{color:inherit;text-decoration:none}.shell{max-width:1240px;margin:0 auto;padding:0 18px 40px}
+.top{height:66px;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-weight:850;display:flex;align-items:center;gap:10px}.mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#a7ff5b,#62d7ff);color:#071014;display:grid;place-items:center;font-size:11px;font-weight:950}.back{color:#a6afb9;font-size:12px;padding:8px 11px;border:1px solid var(--line);border-radius:10px}
+.hero{text-align:center;padding:28px 12px 18px}.tag{display:inline-flex;padding:6px 9px;border:1px solid rgba(167,255,91,.2);background:rgba(167,255,91,.08);color:#d8ffc0;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.06em}.hero h1{font-size:clamp(42px,8vw,74px);line-height:.9;letter-spacing:-.06em;margin:18px 0 14px}.hero p{max-width:700px;margin:0 auto;color:#aeb6bf;line-height:1.6;font-size:14px}
+.launch{margin:22px auto 8px;display:flex;justify-content:center}.launch button{border:0;background:#fff;color:#0a0d11;border-radius:13px;padding:14px 22px;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 10px 35px rgba(0,0,0,.28)}.launch button:disabled{opacity:.5;cursor:wait}
+.status{max-width:780px;margin:12px auto 0;color:#9aa5b0;font-size:12px}.progress{width:min(780px,100%);height:7px;margin:9px auto 0;border:0;border-radius:999px;overflow:hidden}.progress::-webkit-progress-bar{background:#1a2027}.progress::-webkit-progress-value{background:linear-gradient(90deg,#a7ff5b,#62d7ff)}
+.screen-card{margin:16px auto 0;background:#10141a;border:1px solid var(--line);border-radius:18px;padding:10px;overflow:hidden;max-width:1000px}.screen{min-height:620px;background:#050608;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}.screen .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#67717d;font-size:13px;text-align:center;padding:20px}.screen.has-content .placeholder{display:none}#canvas{max-width:100%;max-height:78vh;outline:none;background:#000}#frame-wrap{display:none;width:100%;height:640px}.hidden-ui{display:none!important}
+.console{max-width:1000px;margin:12px auto 0;background:#10141a;border:1px solid var(--line);border-radius:14px;padding:12px}.console summary{cursor:pointer;color:#87929e;font-size:11px}.console pre{height:150px;overflow:auto;white-space:pre-wrap;word-break:break-word;color:#8b97a4;font:10px/1.55 ui-monospace,monospace}
+.note{max-width:1000px;margin:14px auto 0;color:#7f8995;font-size:11px;line-height:1.55;text-align:center}
+@media(max-width:700px){.screen{min-height:460px}.shell{padding-left:10px;padding-right:10px}.hero{padding-top:18px}}
+</style>
+<script>window.coi={coepCredentialless:()=>false};</script>
+<script src="coi-serviceworker.js"></script>
+</head>
+<body>
+<div class="shell">
+<header class="top"><a class="brand" href="https://jogos.kaise.space"><span class="mark">KG</span>Kaise Games</a><a class="back" href="https://lix.kaise.space">← Página do Lix</a></header>
+<section class="hero">
+<span class="tag">LIX ORIGINAL · PT-BR · BOXEDWINE</span>
+<h1>Lix no navegador</h1>
+<p>Abre o Lix 0.10.36 oficial dentro do navegador usando Wine + WebAssembly. A tradução brasileira é aplicada em memória antes de iniciar o jogo.</p>
+<div class="launch"><button id="lixLaunchBtn" onclick="launchKaiseLix()">▶ Jogar Lix agora</button></div>
+<div id="bootStatus" class="status">Clique em “Jogar Lix agora”. Na primeira abertura o navegador precisa baixar o runtime Wine e o jogo.</div>
+<progress id="bootProgress" class="progress" hidden max="100" value="0"></progress>
+</section>
+
+<div class="screen-card">
+  <div id="screen-container" class="screen">
+    <div class="placeholder">O Lix vai aparecer aqui.<br>Depois que abrir, clique dentro da tela para usar teclado e mouse.</div>
+    <canvas id="canvas"></canvas>
+    <div id="frame-wrap"><iframe id="appFrame" title="Lix"></iframe></div>
+  </div>
+</div>
+
+<details class="console"><summary>Detalhes técnicos</summary><pre id="logOutput"></pre></details>
+<p class="note">Primeira execução pode transferir dezenas de MB. O runtime BoxedWine/Wine é open source. Lix é o jogo original de SimonN/LixD, com a localização PT-BR aplicada no navegador.</p>
+
+<div class="hidden-ui">
+  <div id="appDropzone"></div>
+  <input type="file" id="exeInput"><input type="file" id="folderInput"><input type="file" id="zipInput">
+  <button id="pickBtn"></button><button id="pickFolderBtn"></button><button id="pickZipBtn"></button>
+  <div id="entryPickerWrap"><select id="entryPicker"></select></div><div id="fileInfo"></div>
+  <button id="runBtn"></button><button id="demoBtn"></button><button id="saveStateBtn"></button><button id="stopBtn"></button>
+  <input type="radio" name="arch" id="arch32" checked><input type="radio" name="arch" id="arch64">
+</div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
