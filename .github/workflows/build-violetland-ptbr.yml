@@ -66,8 +66,8 @@ jobs:
           cp upstream/start.cmd package/
           cp upstream/README.md package/
           cp upstream/README_RU.TXT package/
-          cp upstream/LICENSE.CODE package/
-          cp upstream/LICENSE.ASSETS package/
+          cp 'upstream/LICENSE (code)' 'package/LICENSE-CODE.txt'
+          cp 'upstream/LICENSE (content)' 'package/LICENSE-CONTENT.txt'
           cp upstream/icon-light.png package/
 
           for d in fonts sounds images monsters weapon music; do
