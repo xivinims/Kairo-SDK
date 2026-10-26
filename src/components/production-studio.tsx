@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   BookMarked,
@@ -7,6 +7,7 @@ import {
   Clock3,
   Download,
   FileAudio2,
+  FileCode2,
   Languages,
   ListChecks,
   PlayCircle,
@@ -14,7 +15,7 @@ import {
   ScanSearch,
   Subtitles,
 } from "lucide-react";
-import { AAA_LOCALIZATION_PROFILES } from "@/lib/gamehub";
+import { AAA_LOCALIZATION_PROFILES, type LocalizationRow } from "@/lib/gamehub";
 import {
   createProductionProject,
   nextAction,
@@ -36,6 +37,18 @@ import {
   runSubtitleQa,
   type SubtitleCue,
 } from "@/lib/subtitles";
+import {
+  loadProductionProject,
+  loadTranslationMemory,
+  saveProductionProject,
+  saveTranslationMemory,
+} from "@/lib/workspace-db";
+import {
+  exportPo,
+  exportXliff,
+  parsePo,
+  parseXliff,
+} from "@/lib/interchange";
 
 function download(content:string,name:string,type="application/json"){
   const blob=new Blob([content],{type});
@@ -53,10 +66,37 @@ export function ProductionStudio() {
   const [subtitles,setSubtitles]=useState<SubtitleCue[]>([]);
   const [subtitleFormat,setSubtitleFormat]=useState<"srt"|"vtt">("srt");
   const [notice,setNotice]=useState("");
+  const [storageReady,setStorageReady]=useState(false);
+  const [interchangeRows,setInterchangeRows]=useState<LocalizationRow[]>([]);
+  const [interchangeFormat,setInterchangeFormat]=useState<"po"|"xliff12"|"xliff20">("po");
 
   const health=useMemo(()=>productionHealth(project),[project]);
   const subtitleIssues=useMemo(()=>runSubtitleQa(subtitles),[subtitles]);
   const matches=useMemo(()=>memoryQuery.trim()?findMemoryMatches(memoryQuery,memory,4):[],[memoryQuery,memory]);
+
+  useEffect(()=>{
+    let cancelled=false;
+    setStorageReady(false);
+    Promise.all([loadProductionProject(project.id),loadTranslationMemory(project.id)])
+      .then(([savedProject,savedMemory])=>{
+        if(cancelled)return;
+        if(savedProject)setProject(savedProject);
+        setMemory(savedMemory);
+        setStorageReady(true);
+      })
+      .catch(()=>setStorageReady(true));
+    return()=>{cancelled=true};
+  },[project.id]);
+
+  useEffect(()=>{
+    if(!storageReady)return;
+    void saveProductionProject(project);
+  },[project,storageReady]);
+
+  useEffect(()=>{
+    if(!storageReady)return;
+    void saveTranslationMemory(project.id,memory);
+  },[memory,project.id,storageReady]);
 
   function chooseGame(gameId:string){
     const profile=AAA_LOCALIZATION_PROFILES.find(item=>item.id===gameId);
@@ -100,6 +140,40 @@ export function ProductionStudio() {
     reader.readAsText(file);
   }
 
+
+  function importInterchange(file:File){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const raw=String(reader.result);
+        const lower=file.name.toLowerCase();
+        if(lower.endsWith(".po")){
+          const rows=parsePo(raw);
+          setInterchangeRows(rows);
+          setInterchangeFormat("po");
+          setNotice(`${rows.length} unidades PO carregadas.`);
+          return;
+        }
+        const parsed=parseXliff(raw);
+        setInterchangeRows(parsed.rows);
+        setInterchangeFormat(parsed.version==="2.0"?"xliff20":"xliff12");
+        setNotice(`${parsed.rows.length} unidades XLIFF ${parsed.version} carregadas.`);
+      }catch{
+        setNotice("Não consegui interpretar esse PO/XLIFF.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function exportInterchange(){
+    if(!interchangeRows.length)return;
+    if(interchangeFormat==="po") download(exportPo(interchangeRows),"localizacao-pt-BR.po","text/x-gettext-translation");
+    else {
+      const version=interchangeFormat==="xliff20"?"2.0":"1.2";
+      download(exportXliff(interchangeRows,version),"localizacao-pt-BR.xliff","application/xliff+xml");
+    }
+  }
+
   function exportSubtitle(){
     if(!subtitles.length)return;
     if(subtitleFormat==="vtt") download(exportVtt(subtitles),"legendas-pt-BR.vtt","text/vtt");
@@ -125,6 +199,7 @@ export function ProductionStudio() {
       <article><Boxes/><b>{project.stats.scenes.toLocaleString("pt-BR")}</b><span>cenas</span></article>
     </div>
 
+    <div className="autosave-status"><span className={storageReady?"ready":"loading"}/>{storageReady?"Auto-save local ativo":"Abrindo workspace local..."}</div>
     {notice&&<div className="notice">{notice}</div>}
 
     <div className="studio-tools">
@@ -144,10 +219,20 @@ export function ProductionStudio() {
         <button className="studio-export" onClick={exportSubtitle}><Download size={14}/> Exportar {subtitleFormat.toUpperCase()}</button></>}
         {!subtitles.length&&<p className="empty-tool">Aceita SRT e WebVTT sem alterar os tempos originais.</p>}
       </article>
+      <article className="studio-tool">
+        <div className="tool-title"><FileCode2/><div><b>PO / XLIFF</b><span>Intercâmbio com pipelines profissionais de localização.</span></div></div>
+        <label className="import-button">Importar PO/XLIFF<input hidden type="file" accept=".po,.xlf,.xliff,application/xliff+xml" onChange={e=>e.target.files?.[0]&&importInterchange(e.target.files[0])}/></label>
+        {interchangeRows.length>0&&<>
+          <div className="subtitle-summary"><span>{interchangeRows.length} unidades</span><span>{interchangeFormat.toUpperCase()}</span></div>
+          <div className="subtitle-editor">{interchangeRows.slice(0,6).map(row=><div key={row.id}><small>{row.context||row.id}</small><p>{row.source}</p><textarea value={row.ptBR} placeholder="Tradução PT-BR" onChange={e=>setInterchangeRows(current=>current.map(item=>item.id===row.id?{...item,ptBR:e.target.value}:item))}/></div>)}</div>
+          <button className="studio-export" onClick={exportInterchange}><Download size={14}/> Exportar formato</button>
+        </>}
+        {!interchangeRows.length&&<p className="empty-tool">Aceita Gettext PO e XLIFF 1.2/2.0.</p>}
+      </article>
     </div>
 
     <div className="studio-capabilities">
-      <div><ScanSearch/><b>Ingestão</b><span>CSV, JSON, SRT, VTT e manifests.</span></div>
+      <div><ScanSearch/><b>Ingestão</b><span>CSV, JSON, PO, XLIFF, SRT, VTT e manifests.</span></div>
       <div><BookMarked/><b>Memória</b><span>Busca exata e fuzzy por similaridade.</span></div>
       <div><Radio/><b>Dublagem</b><span>Fila por personagem, cena e duração.</span></div>
       <div><Subtitles/><b>Legendas</b><span>QA de leitura e sincronização.</span></div>
