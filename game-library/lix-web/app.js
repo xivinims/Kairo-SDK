@@ -895,8 +895,8 @@ setEntry = function (stagedFile) {
 
 
 // ─── Kaise Games: auto-load Lix PT-BR ─────────────────────────────────
-const KAISE_LIX_ZIP = "https://github.com/SimonN/LixD/releases/download/v0.10.36/lix-0.10.36-win32.zip";
-const KAISE_LIX_PTBR = "https://cdn.jsdelivr.net/gh/xivinims/Kairo-SDK@b06f8a6173002b6c3a4ac9769f12ce88db5c7f52/localizations/lix/portuguese-brazil.txt";
+const KAISE_LIX_ZIP = "/play/game/lix.zip";
+const KAISE_LIX_PTBR = "/play/game/ptbr.txt";
 
 async function launchKaiseLix() {
   if (state.bootInFlight || state.booted) return;
