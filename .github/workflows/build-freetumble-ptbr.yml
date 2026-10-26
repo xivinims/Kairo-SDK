@@ -140,28 +140,34 @@ jobs:
             FreeTumble-1.1-PTBR-Windows-x64.zip.sha256
           if-no-files-found: error
 
-      - name: Publish GitHub release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Publish isolated binary branch
+        shell: bash
         run: |
-          @"
+          mkdir -p "$RUNNER_TEMP/freetumble-download"
+          cp FreeTumble-1.1-PTBR-Windows-x64.zip "$RUNNER_TEMP/freetumble-download/"
+          cp FreeTumble-1.1-PTBR-Windows-x64.zip.sha256 "$RUNNER_TEMP/freetumble-download/"
+
+          git config user.name "Kaise Games Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan download-freetumble
+          git rm -rf .
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp "$RUNNER_TEMP/freetumble-download/"* .
+
+          cat > README.md <<'MD'
           # FreeTumble 1.1 PT-BR
 
-          Build Windows x64 compilada a partir do código-fonte original do FreeTumble.
-
-          - Português (Brasil) adicionado como idioma completo da interface.
-          - PT-BR é o idioma padrão desta build.
-          - Código e gráficos sob GPLv3+.
-          - Demais atribuições preservadas conforme README original.
+          Build comunitária Windows x64 do FreeTumble 1.1 em Português (Brasil).
 
           Projeto original: https://github.com/akien-mga/freetumble
 
-          Esta não é uma release oficial do FreeTumble.
-          "@ | Set-Content RELEASE_NOTES.md -Encoding UTF8
+          Código e gráficos: GPLv3+.
+          Demais atribuições permanecem conforme o README original.
+          A tradução e automação de build estão na branch game-library deste repositório.
 
-          if (gh release view "$env:RELEASE_TAG" *> $null) {
-            gh release upload "$env:RELEASE_TAG" "FreeTumble-1.1-PTBR-Windows-x64.zip" "FreeTumble-1.1-PTBR-Windows-x64.zip.sha256" --clobber
-          } else {
-            gh release create "$env:RELEASE_TAG" "FreeTumble-1.1-PTBR-Windows-x64.zip" "FreeTumble-1.1-PTBR-Windows-x64.zip.sha256" --title "FreeTumble 1.1 PT-BR" --notes-file RELEASE_NOTES.md --target "$env:GITHUB_SHA"
-          }
+          Esta não é uma release oficial do FreeTumble.
+          MD
+
+          git add .
+          git commit -m "publish: FreeTumble 1.1 PT-BR Windows x64"
+          git push --force origin HEAD:download-freetumble
