@@ -1,0 +1,112 @@
+name: Build Lix PT-BR
+
+on:
+  push:
+    branches: [feat/kairo-agent-core]
+    paths:
+      - "localizations/lix/**"
+      - ".github/workflows/build-lix-ptbr.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    env:
+      LIX_VERSION: "0.10.36"
+      RELEASE_TAG: "lix-ptbr-v0.10.36"
+    steps:
+      - name: Checkout Kairo-SDK
+        uses: actions/checkout@v4
+
+      - name: Download official Lix Windows release
+        shell: pwsh
+        run: |
+          $url = "https://github.com/SimonN/LixD/releases/download/v$env:LIX_VERSION/lix-$env:LIX_VERSION-win64.zip"
+          Invoke-WebRequest -Uri $url -OutFile lix-original.zip
+
+      - name: Verify official archive hash
+        shell: pwsh
+        run: |
+          $expected = "a2c5e369e78b315e9055068ce91e778ea4276a2cce6311caf26356c6f6b4c31d"
+          $actual = (Get-FileHash lix-original.zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            throw "Official Lix archive hash mismatch. Expected $expected, got $actual"
+          }
+
+      - name: Apply Brazilian Portuguese localization
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Expand-Archive -Path lix-original.zip -DestinationPath package
+
+          $languageFile = Get-ChildItem -Path package -Recurse -File -Filter english.txt |
+            Where-Object { $_.FullName -match "[\\/]data[\\/]transl[\\/]english\.txt$" } |
+            Select-Object -First 1
+
+          if (-not $languageFile) {
+            throw "Could not find data/transl/english.txt inside the official Lix release."
+          }
+
+          Copy-Item "localizations/lix/portuguese-brazil.txt" $languageFile.FullName -Force
+
+          @"
+          Lix PT-BR - JogaTeca BR
+
+          Base oficial: Lix v$env:LIX_VERSION
+          Projeto original: https://github.com/SimonN/LixD
+          Tradução: Português (Brasil), aplicada ao arquivo de idioma do pacote oficial.
+          O executável, fases, gráficos, sprites e demais recursos permanecem do pacote oficial.
+
+          Licenças:
+          O código, gráficos, sprites, fases, efeitos sonoros e parte das músicas do Lix são
+          liberados sob CC0. A fonte DejaVu Sans e algumas músicas têm licenças próprias.
+          Consulte doc/copying.txt dentro do próprio jogo para os termos completos.
+
+          Esta build não é uma release oficial do projeto Lix.
+          "@ | Set-Content -Path "package/TRADUCAO-PTBR.txt" -Encoding UTF8
+
+      - name: Package translated game
+        shell: pwsh
+        run: |
+          $zip = "Lix-$env:LIX_VERSION-PTBR-Windows-x64.zip"
+          Compress-Archive -Path "package/*" -DestinationPath $zip -CompressionLevel Optimal
+          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$sha  $zip" | Set-Content "$zip.sha256" -Encoding ASCII
+          "ZIP_NAME=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lix-\${{ env.LIX_VERSION }}-PTBR-Windows-x64
+          path: |
+            \${{ env.ZIP_NAME }}
+            \${{ env.ZIP_NAME }}.sha256
+          if-no-files-found: error
+
+      - name: Publish downloadable GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          @"
+          # Lix $env:LIX_VERSION PT-BR
+
+          Versão do jogo original Lix v$env:LIX_VERSION com a interface traduzida para Português (Brasil).
+
+          - Base: release oficial Windows x64 do SimonN/LixD.
+          - Executável e conteúdo do jogo: originais.
+          - Modificação: arquivo de idioma PT-BR e aviso de tradução.
+          - Licenças originais preservadas no pacote.
+          - Esta não é uma release oficial do projeto Lix.
+
+          Fonte original: https://github.com/SimonN/LixD
+          "@ | Set-Content RELEASE_NOTES.md -Encoding UTF8
+
+          if (gh release view "$env:RELEASE_TAG" *> $null) {
+            gh release upload "$env:RELEASE_TAG" "$env:ZIP_NAME" "$env:ZIP_NAME.sha256" --clobber
+          } else {
+            gh release create "$env:RELEASE_TAG" "$env:ZIP_NAME" "$env:ZIP_NAME.sha256" --title "Lix $env:LIX_VERSION PT-BR" --notes-file RELEASE_NOTES.md --target "$env:GITHUB_SHA"
+          }
