@@ -1,0 +1,74 @@
+name: Build Lix PT-BR x86 for Browser
+
+on:
+  push:
+    branches: [game-library]
+    paths:
+      - "localizations/lix/**"
+      - ".github/workflows/build-lix-x86.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    env:
+      LIX_VERSION: "0.10.36"
+      RELEASE_TAG: "lix-ptbr-v0.10.36"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download official Lix Windows 32-bit release
+        shell: pwsh
+        run: |
+          $url = "https://github.com/SimonN/LixD/releases/download/v$env:LIX_VERSION/lix-$env:LIX_VERSION-win32.zip"
+          Invoke-WebRequest -Uri $url -OutFile lix-original-win32.zip
+
+      - name: Verify official archive
+        shell: pwsh
+        run: |
+          $expected = "cf894ab448d5e8689065a5c20770ec0cd9460fc95c29d2dd1a76b325d1712f19"
+          $actual = (Get-FileHash lix-original-win32.zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) { throw "Hash mismatch: $actual" }
+
+      - name: Apply PT-BR
+        shell: pwsh
+        run: |
+          Expand-Archive -Path lix-original-win32.zip -DestinationPath package
+          $languageFile = Get-ChildItem package -Recurse -File -Filter english.txt |
+            Where-Object { $_.FullName -match "[\\/]data[\\/]transl[\\/]english\.txt$" } |
+            Select-Object -First 1
+          if (-not $languageFile) { throw "data/transl/english.txt not found" }
+          Copy-Item "localizations/lix/portuguese-brazil.txt" $languageFile.FullName -Force
+          @"
+          Lix 0.10.36 PT-BR x86 - Kaise Games
+          Base: pacote oficial win32 de SimonN/LixD.
+          Alteração: interface Português (Brasil).
+          Esta build é comunitária e não uma release oficial do Lix.
+          "@ | Set-Content package/TRADUCAO-PTBR.txt -Encoding UTF8
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $zip = "Lix-$env:LIX_VERSION-PTBR-Windows-x86.zip"
+          Compress-Archive -Path "package/*" -DestinationPath $zip -CompressionLevel Optimal
+          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$sha  $zip" | Set-Content "$zip.sha256" -Encoding ASCII
+          "ZIP_NAME=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lix-0.10.36-PTBR-Windows-x86
+          path: |
+            ${{ env.ZIP_NAME }}
+            ${{ env.ZIP_NAME }}.sha256
+          if-no-files-found: error
+
+      - name: Add x86 build to existing PT-BR release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$env:RELEASE_TAG" "$env:ZIP_NAME" "$env:ZIP_NAME.sha256" --clobber
