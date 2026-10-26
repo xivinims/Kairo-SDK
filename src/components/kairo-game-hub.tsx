@@ -38,6 +38,12 @@ import {
   type GameEntry,
   type LocalizationProject,
 } from "@/lib/gamehub";
+import {
+  buildLocalizedRedkitCsv,
+  buildTranslationBatches,
+  parseRedkitLocalizationCsv,
+  runLocalizationQa,
+} from "@/lib/redkit-localization";
 
 type View = "catalog" | "localize" | "dubbing" | "about";
 type Scene = { speaker: string; text: string; choices?: { label: string; next: number; affinity?: number }[] };
@@ -128,41 +134,154 @@ function GameCard({ game, onPlay }: { game: GameEntry; onPlay: (game: GameEntry)
 
 function LocalizationLab() {
   const [project,setProject]=useState<LocalizationProject>(SAMPLE_LOCALIZATION);
-  const [chunkSize,setChunkSize]=useState(200);
+  const [chunkSize,setChunkSize]=useState(120);
   const [notice,setNotice]=useState("");
   const [sourceJson,setSourceJson]=useState("");
+  const [sourceCsv,setSourceCsv]=useState("");
+  const [sourceKind,setSourceKind]=useState<"demo"|"json"|"redkit-csv">("demo");
   const [engineHints,setEngineHints]=useState<ReturnType<typeof detectEngineProfiles>>([]);
   const chunks=useMemo(()=>chunkRows(project.rows,chunkSize),[project.rows,chunkSize]);
   const invalid=project.rows.filter(r=>r.ptBR && !validateTranslation(r.source,r.ptBR).ok).length;
   const progress=useMemo(()=>localizationProgress(project.rows),[project.rows]);
+  const qaIssues=useMemo(()=>runLocalizationQa(project.rows),[project.rows]);
+  const qaErrors=qaIssues.filter(issue=>issue.severity==="erro").length;
+  const batches=useMemo(()=>buildTranslationBatches(project.rows,chunkSize),[project.rows,chunkSize]);
 
-  function importJson(file: File) {
+  function importSource(file: File) {
     const reader=new FileReader();
-    reader.onload=()=>{try{const raw=String(reader.result);const rows=parseJsonStrings(raw);setSourceJson(raw);setEngineHints(detectEngineProfiles([file.name]));setProject({name:file.name,sourceLocale:"auto",targetLocale:"pt-BR",rows,glossary:{}});setNotice(`${rows.length} textos encontrados. Estrutura original preservada para exportação localizada.`)}catch{setNotice("Não consegui ler esse JSON.")}};
+    reader.onload=()=>{
+      try{
+        const raw=String(reader.result);
+        const lower=file.name.toLowerCase();
+        if(lower.endsWith(".csv")){
+          const parsed=parseRedkitLocalizationCsv(raw);
+          setSourceCsv(raw);
+          setSourceJson("");
+          setSourceKind("redkit-csv");
+          setEngineHints([]);
+          setProject({name:file.name,sourceLocale:"en",targetLocale:"pt-BR",rows:parsed.rows,glossary:{}});
+          setNotice(`${parsed.rows.length} strings importadas do CSV do REDkit.`);
+          return;
+        }
+
+        const rows=parseJsonStrings(raw);
+        setSourceJson(raw);
+        setSourceCsv("");
+        setSourceKind("json");
+        setEngineHints(detectEngineProfiles([file.name]));
+        setProject({name:file.name,sourceLocale:"auto",targetLocale:"pt-BR",rows,glossary:{}});
+        setNotice(`${rows.length} textos encontrados. Estrutura original preservada para exportação localizada.`);
+      }catch{
+        setNotice("Não consegui ler esse arquivo. Use JSON ou CSV exportado pela ferramenta oficial do jogo.");
+      }
+    };
     reader.readAsText(file);
   }
-  function downloadPack(){
-    const blob=new Blob([exportTranslationPack(project)],{type:"application/json"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`${project.name.replace(/\W+/g,"-").toLowerCase()}-ptbr.kairo-loc.json`;a.click();URL.revokeObjectURL(a.href);
+
+  function downloadText(content:string,name:string,type="application/json"){
+    const blob=new Blob([content],{type});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=name;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
+
+  function downloadPack(){
+    downloadText(
+      exportTranslationPack(project),
+      `${project.name.replace(/\W+/g,"-").toLowerCase()}-ptbr.kairo-loc.json`,
+    );
+  }
+
   function downloadLocalizedJson(){
     if(!sourceJson)return;
-    const localized=buildLocalizedJson(sourceJson,project.rows);
-    const blob=new Blob([localized],{type:"application/json"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=project.name.replace(/\.json$/i,"")+"-pt-BR.json";a.click();URL.revokeObjectURL(a.href);
+    downloadText(
+      buildLocalizedJson(sourceJson,project.rows),
+      project.name.replace(/\.json$/i,"")+"-pt-BR.json",
+    );
   }
+
+  function downloadRedkitCsv(){
+    if(!sourceCsv)return;
+    downloadText(
+      buildLocalizedRedkitCsv(sourceCsv,project.rows),
+      project.name.replace(/\.csv$/i,"")+"-pt-BR.csv",
+      "text/csv;charset=utf-8",
+    );
+  }
+
+  function downloadBatch(index:number){
+    const data={
+      format:"kairo-translation-batch",
+      version:1,
+      targetLocale:"pt-BR",
+      batch:index+1,
+      totalBatches:batches.length,
+      glossary:project.glossary,
+      rules:[
+        "Preserve placeholders, tags, ids e códigos exatamente.",
+        "Traduza de forma natural para português brasileiro.",
+        "Mantenha nomes próprios conforme o glossário.",
+        "Não resuma nem omita frases.",
+      ],
+      strings:batches[index].map(row=>({...row,translation:""})),
+    };
+    downloadText(JSON.stringify(data,null,2),`batch-${String(index+1).padStart(4,"0")}-ptbr.json`);
+  }
+
   return <section className="lab">
-    <div className="lab-head"><div><span className="kicker">LABORATÓRIO DE LOCALIZAÇÃO</span><h2>Traduzir sem quebrar o jogo.</h2><p>Importe textos autorizados, trabalhe por blocos e valide variáveis antes de exportar o pacote PT-BR.</p></div><label className="import-button"><Upload size={16}/> Importar JSON<input type="file" accept=".json,application/json" hidden onChange={e=>e.target.files?.[0]&&importJson(e.target.files[0])}/></label></div>
-    <div className="lab-stats"><div><b>{project.rows.length}</b><span>strings</span></div><div><b>{chunks.length}</b><span>blocos</span></div><div><b>{invalid}</b><span>alertas</span></div><div><b>{progress.percent}%</b><span>válido em pt-BR</span></div></div>
+    <div className="lab-head">
+      <div><span className="kicker">LABORATÓRIO DE LOCALIZAÇÃO</span><h2>Traduzir sem quebrar o jogo.</h2><p>JSON genérico e CSV oficial do REDkit. Trabalha por lotes, preserva ids e valida o projeto antes da reimportação.</p></div>
+      <label className="import-button"><Upload size={16}/> Importar arquivo<input type="file" accept=".json,.csv,application/json,text/csv" hidden onChange={e=>e.target.files?.[0]&&importSource(e.target.files[0])}/></label>
+    </div>
+
+    <div className="lab-stats">
+      <div><b>{project.rows.length}</b><span>strings</span></div>
+      <div><b>{batches.length}</b><span>lotes pendentes</span></div>
+      <div><b>{qaErrors}</b><span>erros de QA</span></div>
+      <div><b>{progress.percent}%</b><span>válido em pt-BR</span></div>
+    </div>
+
+    <div className="format-banner">
+      <b>{sourceKind==="redkit-csv"?"The Witcher 3 · REDkit CSV":sourceKind==="json"?"Projeto JSON":"Projeto de demonstração"}</b>
+      <span>{sourceKind==="redkit-csv"?"Exporta de volta no formato CSV para reimportar no Localized Strings Editor.":"O Kairo mantém a estrutura original e cria um pacote PT-BR separado."}</span>
+    </div>
+
     {engineHints.length>0&&<div className="engine-hints">{engineHints.map(engine=><span key={engine.id}><b>{engine.name}</b> · {engine.confidence}</span>)}</div>}
-    <div className="lab-toolbar"><label>Strings por bloco <input type="number" min={25} max={1000} value={chunkSize} onChange={e=>setChunkSize(+e.target.value||200)}/></label><div className="lab-actions"><button onClick={downloadPack}><Download size={15}/> Pacote Kairo</button><button disabled={!sourceJson} onClick={downloadLocalizedJson}><Download size={15}/> JSON localizado</button></div></div>
+
+    <div className="lab-toolbar">
+      <label>Strings por lote <input type="number" min={25} max={500} value={chunkSize} onChange={e=>setChunkSize(+e.target.value||120)}/></label>
+      <div className="lab-actions">
+        {batches.length>0&&<button onClick={()=>downloadBatch(0)}><Download size={15}/> Baixar próximo lote</button>}
+        <button onClick={downloadPack}><Download size={15}/> Pacote Kairo</button>
+        {sourceKind==="json"&&<button disabled={!sourceJson} onClick={downloadLocalizedJson}><Download size={15}/> JSON localizado</button>}
+        {sourceKind==="redkit-csv"&&<button disabled={!sourceCsv||qaErrors>0} onClick={downloadRedkitCsv}><Download size={15}/> CSV para REDkit</button>}
+      </div>
+    </div>
+
     {notice&&<div className="notice">{notice}</div>}
-    <div className="translation-list">{project.rows.slice(0,80).map((row,i)=>{const check=row.ptBR?validateTranslation(row.source,row.ptBR):{ok:true,missing:[]};return <div className="translation-row" key={row.id}><div className="row-index">{i+1}</div><div><small>{row.context||row.id}</small><p>{row.source}</p></div><div><textarea value={row.ptBR} placeholder="Tradução em português..." onChange={e=>setProject(p=>({...p,rows:p.rows.map(r=>r.id===row.id?{...r,ptBR:e.target.value}:r)}))}/>{!check.ok&&<span className="token-error">Faltando: {check.missing.join(", ")}</span>}</div></div>})}</div>
-    {project.rows.length>80&&<p className="lab-foot">Mostrando 80 linhas na interface. O pacote mantém todas as {project.rows.length}.</p>}
+
+    {qaIssues.length>0&&<details className="qa-panel">
+      <summary>QA do projeto · {qaErrors} erros · {qaIssues.length-qaErrors} avisos</summary>
+      <div>{qaIssues.slice(0,30).map((issue,index)=><p key={index} className={issue.severity}><b>{issue.rowId}</b> {issue.message}</p>)}</div>
+      {qaIssues.length>30&&<small>Mostrando os primeiros 30 de {qaIssues.length} apontamentos.</small>}
+    </details>}
+
+    <div className="translation-list">{project.rows.slice(0,120).map((row,i)=>{
+      const check=row.ptBR?validateTranslation(row.source,row.ptBR):{ok:true,missing:[]};
+      return <div className="translation-row" key={row.id}>
+        <div className="row-index">{i+1}</div>
+        <div><small>{row.context||row.id}</small><p>{row.source}</p></div>
+        <div>
+          <textarea value={row.ptBR} placeholder="Tradução em português..." onChange={e=>setProject(p=>({...p,rows:p.rows.map(r=>r.id===row.id?{...r,ptBR:e.target.value}:r)}))}/>
+          {!check.ok&&<span className="token-error">Faltando: {check.missing.join(", ")}</span>}
+        </div>
+      </div>;
+    })}</div>
+    {project.rows.length>120&&<p className="lab-foot">Mostrando 120 linhas na interface. O projeto mantém todas as {project.rows.length}.</p>}
   </section>;
 }
-
-
 
 function AaaProfiles() {
   function downloadTemplate(profile:AaaLocalizationProfile){
