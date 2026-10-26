@@ -80,16 +80,16 @@ jobs:
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Lix-\${{ env.LIX_VERSION }}-PTBR-Windows-x64
+          name: Lix-${{ env.LIX_VERSION }}-PTBR-Windows-x64
           path: |
-            \${{ env.ZIP_NAME }}
-            \${{ env.ZIP_NAME }}.sha256
+            ${{ env.ZIP_NAME }}
+            ${{ env.ZIP_NAME }}.sha256
           if-no-files-found: error
 
       - name: Publish downloadable GitHub release
         shell: pwsh
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           @"
           # Lix $env:LIX_VERSION PT-BR
