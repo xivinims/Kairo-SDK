@@ -417,3 +417,107 @@ export const SAMPLE_DUBBING: DubbingProject = {
     },
   ],
 };
+
+
+export interface AaaLocalizationProfile {
+  id: string;
+  title: string;
+  ratingNote: string;
+  officialTool: string;
+  toolUrl: string;
+  voiceSupport: string;
+  localizationSupport: string;
+  localInstallRequired: boolean;
+  exportMode: string;
+  priority: number;
+}
+
+export const AAA_LOCALIZATION_PROFILES: AaaLocalizationProfile[] = [
+  {
+    id: "witcher-3",
+    title: "The Witcher 3: Wild Hunt",
+    ratingNote: "Conteúdo maduro por violência, linguagem e temas adultos.",
+    officialTool: "The Witcher 3 REDkit",
+    toolUrl: "https://www.thewitcher.com/us/pt-br/redkit",
+    voiceSupport: "Scene Editor, áudio original disponível no REDkit e fluxo de sincronização labial.",
+    localizationSupport: "Cenas, diálogos, interface e conteúdo de quests podem ser trabalhados como mod.",
+    localInstallRequired: true,
+    exportMode: "Mod PT-BR separado, sem incluir o jogo base.",
+    priority: 1,
+  },
+  {
+    id: "fallout-4",
+    title: "Fallout 4",
+    ratingNote: "Conteúdo maduro por violência, linguagem e temas pesados.",
+    officialTool: "Creation Kit",
+    toolUrl: "https://fallout.bethesda.net/",
+    voiceSupport: "Suporte a arquivos WAV/FUZ e LipGen no Creation Kit.",
+    localizationSupport: "Creation Kit com exportação de localização.",
+    localInstallRequired: true,
+    exportMode: "Plugin/arquivos de mod PT-BR referenciando a instalação local.",
+    priority: 2,
+  },
+  {
+    id: "cyberpunk-2077",
+    title: "Cyberpunk 2077",
+    ratingNote: "Conteúdo maduro por violência, linguagem e temas adultos.",
+    officialTool: "REDmod",
+    toolUrl: "https://www.cyberpunk.net/pt-br/modding-support",
+    voiceSupport: "REDmod suporta sons personalizados, animações e scripts.",
+    localizationSupport: "Pipeline de mod com assets e scripts personalizados.",
+    localInstallRequired: true,
+    exportMode: "Pacote REDmod separado para a cópia instalada do jogo.",
+    priority: 3,
+  },
+  {
+    id: "skyrim-se",
+    title: "The Elder Scrolls V: Skyrim Special Edition",
+    ratingNote: "Conteúdo maduro por violência e temas de fantasia.",
+    officialTool: "Creation Kit / Creations",
+    toolUrl: "https://elderscrolls.bethesda.net/",
+    voiceSupport: "Ecossistema de Creation Kit e mods com diálogos/áudio.",
+    localizationSupport: "Strings e plugins podem ser localizados por mod.",
+    localInstallRequired: true,
+    exportMode: "Plugin e assets PT-BR separados da instalação base.",
+    priority: 4,
+  },
+  {
+    id: "baldurs-gate-3",
+    title: "Baldur's Gate 3",
+    ratingNote: "Conteúdo maduro por violência, linguagem e temas adultos.",
+    officialTool: "Baldur's Gate 3 Toolkit",
+    toolUrl: "https://baldursgate3.game/",
+    voiceSupport: "Perfil experimental para cenas/diálogos, dependendo das limitações do Toolkit.",
+    localizationSupport: "Toolkit oficial para criação e distribuição de mods.",
+    localInstallRequired: true,
+    exportMode: "Mod separado usando a instalação local.",
+    priority: 5,
+  },
+];
+
+export function buildAaaProjectTemplate(profile: AaaLocalizationProfile) {
+  return {
+    format: "kairo-aaa-localization-project",
+    version: 1,
+    gameId: profile.id,
+    gameTitle: profile.title,
+    targetLocale: "pt-BR",
+    requiresLocalInstall: profile.localInstallRequired,
+    officialTool: profile.officialTool,
+    exportMode: profile.exportMode,
+    text: {
+      status: "aguardando-importacao-local",
+      sourceLocale: "en",
+      chunks: [],
+    },
+    dubbing: {
+      status: "aguardando-roteiro-local",
+      characters: [],
+      cues: [],
+    },
+    scenes: {
+      status: "aguardando-mapeamento",
+      entries: [],
+    },
+  };
+}
