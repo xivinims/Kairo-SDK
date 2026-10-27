@@ -50,7 +50,7 @@ button{color:inherit}
 .tree-row.selected{background:#244b7a}
 .tree-row.indent{padding-left:25px}
 .dot{width:12px;height:12px;border-radius:3px;background:#64a3ff;flex:none}
-.dot.base{background:#69bd6b}.dot.folder{background:#d6a24e}.dot.script{background:#65d4a0}
+.dot.base{background:#69bd6b}.dot.folder{background:#d6a24e}.dot.script{background:#65d4a0}.dot.model{background:#f0b14a;border-radius:2px}.dot.mesh{background:#a985ff;border-radius:50%}.tree-model{font-weight:650;color:#e3e7ec}.assetline{font-size:9px;color:#7e8996;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:10;background:rgba(19,23,29,.94);border:1px solid #414956;border-radius:9px;padding:8px 11px;font-size:10px;color:#dfe5ec;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}.toast.show{display:block}
 .viewport{position:relative;flex:1;min-height:0;background:#8eb5dd;overflow:hidden}
 #three{position:absolute;inset:0}
 .viewportHud{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:3;pointer-events:none}
@@ -99,18 +99,23 @@ button{color:inherit}
     <b>Kaise Studio Web</b>
     <span class="muted">• Baseplate</span>
     <div class="spacer"></div>
-    <span class="muted">Studio Simulator</span>
+    <span class="muted">Roblox-compatible 3D workspace</span>
     <button class="winbtn" type="button">—</button><button class="winbtn" type="button">□</button><button class="winbtn" type="button">×</button>
   </div>
 
   <div class="ribbon">
     <button class="tab active" type="button">Home</button>
     <button class="tab" type="button">Model</button>
+    <button class="tab" type="button">Avatar</button>
     <button class="tab" type="button">Test</button>
     <button class="tab" type="button">View</button>
     <button class="tab" type="button">Plugins</button>
     <div class="sep"></div>
     <button class="tool" id="addPart" type="button">＋ Part</button>
+    <button class="tool" id="robloxImportBtn" type="button">⬇ Roblox Model</button>
+    <input id="robloxFile" type="file" accept=".rbxmx,.rbxlx,application/xml,text/xml" hidden>
+    <button class="tool" id="meshImportBtn" type="button">⬇ Mesh 3D</button>
+    <input id="meshFile" type="file" accept=".glb,.gltf,.obj,.fbx" hidden>
     <button class="tool" id="duplicate" type="button">⧉ Duplicate</button>
     <button class="tool danger" id="delete" type="button">⌫ Delete</button>
     <div class="sep"></div>
@@ -123,6 +128,7 @@ button{color:inherit}
     <div class="sep"></div>
     <button class="tool" id="save" type="button">Save</button>
     <button class="tool" id="export" type="button">Export JSON</button>
+    <button class="tool" id="exportRbxmx" type="button">Export .rbxmx</button>
     <button class="tool" id="importBtn" type="button">Import</button>
     <input id="importFile" type="file" accept="application/json,.json" hidden>
   </div>
@@ -137,8 +143,9 @@ button{color:inherit}
       <div class="panelhead">3D Viewport <div class="spacer"></div><span id="selLabel" style="color:#8f99a5;font-weight:500">Workspace</span></div>
       <div class="viewport">
         <div id="three"></div>
+        <div id="toast" class="toast"></div>
         <div class="viewportHud"><span class="badge" id="modeBadge">EDIT MODE</span><span class="badge" id="fpsBadge">60 FPS</span></div>
-        <div class="gizmoHelp">Clique numa peça • arraste o gizmo • roda do mouse aproxima/afasta</div>
+        <div class="gizmoHelp">Stud grid • clique numa peça • W/E/R: Move/Rotate/Scale • roda do mouse: zoom</div>
       </div>
     </section>
 
@@ -149,7 +156,9 @@ button{color:inherit}
           <h3>Data</h3>
           <div class="prop"><label>Name</label><input id="pName" value=""></div>
           <div class="prop"><label>ClassName</label><input id="pClass" value="Part" disabled></div>
-          <div class="prop"><label>Parent</label><input value="Workspace" disabled></div>
+          <div class="prop"><label>Parent</label><input id="pParent" value="Workspace" disabled></div>
+          <div class="prop"><label>MeshId</label><input id="pMeshId" value="" disabled></div>
+          <div class="prop"><label>TextureID</label><input id="pTextureId" value="" disabled></div>
         </div>
         <div class="group">
           <h3>Transform</h3>
@@ -199,7 +208,7 @@ part.Anchored = false</textarea>
   <div class="statusbar">
     <span class="statusDot"></span><span id="status">Ready</span>
     <div class="spacer"></div>
-    <span>Local project</span><span>Luau subset</span><span>WebGL</span>
+    <span>.rbxmx/.rbxlx</span><span>Studs</span><span>Luau subset</span><span>WebGL</span>
   </div>
 </div>
 
@@ -207,6 +216,9 @@ part.Anchored = false</textarea>
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js";
 import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/controls/OrbitControls.js";
 import { TransformControls } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/controls/TransformControls.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/loaders/GLTFLoader.js";
+import { OBJLoader } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/loaders/OBJLoader.js";
+import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/loaders/FBXLoader.js";
 
 const app=document.querySelector("#app");
 const host=document.querySelector("#three");
@@ -263,6 +275,10 @@ function log(msg,type="info"){
   out.textContent+=p+msg+"\n";out.scrollTop=out.scrollHeight;
 }
 function setStatus(s){status.textContent=s}
+function toast(msg){
+  const t=document.querySelector("#toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toast._timer);toast._timer=setTimeout(()=>t.classList.remove("show"),2200);
+}
 function uid(){return "part_"+(idCounter++)}
 function makeMaterial(p){
   const mat=new THREE.MeshStandardMaterial({
@@ -276,28 +292,63 @@ function makeMaterial(p){
   });
   return mat;
 }
+function geometryForPart(p){
+  if(p.className==="WedgePart") return new THREE.BufferGeometry().setFromPoints([]);
+  if(p.shape==="Ball") return new THREE.SphereGeometry(.5,24,16);
+  if(p.shape==="Cylinder") return new THREE.CylinderGeometry(.5,.5,1,24);
+  return new THREE.BoxGeometry(1,1,1);
+}
+function makeWedgeGeometry(){
+  const g=new THREE.BufferGeometry();
+  const v=new Float32Array([
+    -.5,-.5,-.5, .5,-.5,-.5, .5,-.5,.5, -.5,-.5,.5,
+    -.5,.5,.5, .5,.5,.5
+  ]);
+  const idx=[0,1,2,0,2,3, 3,2,5,3,5,4, 0,3,4, 0,4, 0, 1,5,2, 0,4,5,0,5,1];
+  g.setAttribute("position",new THREE.BufferAttribute(v,3));g.setIndex(idx);g.computeVertexNormals();return g;
+}
 function newPart(data={}){
   const p={
-    id:data.id||uid(),name:data.name||"Part",className:"Part",
+    id:data.id||uid(),name:data.name||"Part",className:data.className||"Part",
+    model:data.model||"",shape:data.shape||"Block",
     position:data.position?{...data.position}:{x:0,y:3,z:0},
     size:data.size?{...data.size}:{x:4,y:1,z:2},
     rotation:data.rotation?{...data.rotation}:{x:0,y:0,z:0},
     color:data.color||"#a3a3a3",material:data.material||"Plastic",
     transparency:Number(data.transparency||0),anchored:data.anchored??true,canCollide:data.canCollide??true,
+    meshId:data.meshId||"",textureId:data.textureId||"",sourceKind:data.sourceKind||"part",
     velocity:{x:0,y:0,z:0}
   };
-  const geo=new THREE.BoxGeometry(1,1,1);
+  let geo=p.className==="WedgePart"?makeWedgeGeometry():geometryForPart(p);
+  if(!geo.getAttribute("position")) geo=makeWedgeGeometry();
   const mesh=new THREE.Mesh(geo,makeMaterial(p));
-  mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.partId=p.id;scene.add(mesh);p.mesh=mesh;
-  applyToMesh(p);parts.push(p);selectPart(p.id);renderTree();setStatus("Part added");
+  mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.partId=p.id;mesh.userData.pickRoot=true;scene.add(mesh);p.mesh=mesh;
+  applyToMesh(p);parts.push(p);selectPart(p.id);renderTree();setStatus(p.className+" added");
   return p;
+}
+function newExternalModel(object,data={}){
+  const box=new THREE.Box3().setFromObject(object);
+  const size=new THREE.Vector3();box.getSize(size);
+  const center=new THREE.Vector3();box.getCenter(center);
+  object.position.sub(center);
+  const max=Math.max(size.x,size.y,size.z)||1;
+  const scale=Math.min(1,10/max);
+  object.scale.multiplyScalar(scale);
+  const wrapper=new THREE.Group();wrapper.add(object);wrapper.position.set(0,Math.max(1,size.y*scale/2),0);
+  const p={id:uid(),name:data.name||"ImportedMesh",className:"MeshPart",model:data.model||"",shape:"Mesh",
+    position:{x:wrapper.position.x,y:wrapper.position.y,z:wrapper.position.z},size:{x:1,y:1,z:1},rotation:{x:0,y:0,z:0},
+    color:"#a3a3a3",material:"Plastic",transparency:0,anchored:true,canCollide:true,
+    meshId:data.meshId||"",textureId:data.textureId||"",sourceKind:"external",velocity:{x:0,y:0,z:0},mesh:wrapper};
+  wrapper.userData.partId=p.id;wrapper.userData.pickRoot=true;
+  wrapper.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.userData.partId=p.id}});
+  scene.add(wrapper);parts.push(p);selectPart(p.id);renderTree();setStatus("Mesh imported");return p;
 }
 function applyToMesh(p){
   const m=p.mesh;if(!m)return;
   m.position.set(p.position.x,p.position.y,p.position.z);
-  m.scale.set(Math.max(.1,p.size.x),Math.max(.1,p.size.y),Math.max(.1,p.size.z));
+  if(p.sourceKind!=="external") m.scale.set(Math.max(.1,p.size.x),Math.max(.1,p.size.y),Math.max(.1,p.size.z));
   m.rotation.set(THREE.MathUtils.degToRad(p.rotation.x),THREE.MathUtils.degToRad(p.rotation.y),THREE.MathUtils.degToRad(p.rotation.z));
-  if(m.material)m.material.dispose();m.material=makeMaterial(p);
+  if(p.sourceKind!=="external"&&m.material){m.material.dispose();m.material=makeMaterial(p)}
 }
 function syncSelectedFromMesh(){
   if(!selected)return;const m=selected.mesh;
@@ -313,7 +364,7 @@ function selectPart(id){
 }
 function deleteSelected(){
   if(!selected||playing)return;
-  transform.detach();scene.remove(selected.mesh);selected.mesh.geometry.dispose();selected.mesh.material.dispose();
+  transform.detach();scene.remove(selected.mesh);selected.mesh.traverse?.(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose?.());else o.material?.dispose?.()});
   parts=parts.filter(p=>p!==selected);selected=null;renderTree();renderProps();setStatus("Deleted");
 }
 function duplicateSelected(){
@@ -326,7 +377,14 @@ function renderTree(){
   const mk=(html,cls="",cb=null)=>{const d=document.createElement("div");d.className="tree-row "+cls;d.innerHTML=html;if(cb)d.addEventListener("click",cb);tree.appendChild(d);};
   mk('<span class="dot folder"></span><b>Workspace</b>');
   mk('<span class="dot base"></span>Baseplate',"indent");
-  parts.forEach(p=>mk('<span class="dot"></span>'+escapeHtml(p.name),"indent "+(selected?.id===p.id?"selected":""),()=>selectPart(p.id)));
+  const grouped=new Map();
+  for(const p of parts){const key=p.model||"";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(p)}
+  if(grouped.has("")) for(const p of grouped.get("")) mk('<span class="dot '+(p.className==="MeshPart"?"mesh":"")+'"></span>'+escapeHtml(p.name),"indent "+(selected?.id===p.id?"selected":""),()=>selectPart(p.id));
+  for(const [model,children] of grouped){
+    if(!model)continue;
+    mk('<span class="dot model"></span><span class="tree-model">'+escapeHtml(model)+'</span>',"indent");
+    for(const p of children) mk('<span class="dot '+(p.className==="MeshPart"?"mesh":"")+'"></span>'+escapeHtml(p.name),"indent "+(selected?.id===p.id?"selected":""),()=>selectPart(p.id));
+  }
   mk('<span class="dot folder"></span>Players');
   mk('<span class="dot folder"></span>Lighting');
   mk('<span class="dot folder"></span>ReplicatedStorage');
@@ -340,13 +398,15 @@ const fields={
  sx:document.querySelector("#sx"),sy:document.querySelector("#sy"),sz:document.querySelector("#sz"),
  rx:document.querySelector("#rx"),ry:document.querySelector("#ry"),rz:document.querySelector("#rz"),
  color:document.querySelector("#pColor"),colorText:document.querySelector("#pColorText"),material:document.querySelector("#pMaterial"),
- transparency:document.querySelector("#pTransparency"),anchored:document.querySelector("#pAnchored"),collide:document.querySelector("#pCollide")
+ transparency:document.querySelector("#pTransparency"),anchored:document.querySelector("#pAnchored"),collide:document.querySelector("#pCollide"),
+ parent:document.querySelector("#pParent"),meshId:document.querySelector("#pMeshId"),textureId:document.querySelector("#pTextureId"),className:document.querySelector("#pClass")
 };
 function renderProps(){
  const disabled=!selected||playing;
  Object.values(fields).forEach(el=>el.disabled=disabled);
  if(!selected){document.querySelector("#propTitle").textContent="None";return}
  document.querySelector("#propTitle").textContent=selected.name;
+ fields.className.value=selected.className||"Part";fields.parent.value=selected.model||"Workspace";fields.meshId.value=selected.meshId||"";fields.textureId.value=selected.textureId||"";
  fields.name.value=selected.name;
  fields.px.value=selected.position.x;fields.py.value=selected.position.y;fields.pz.value=selected.position.z;
  fields.sx.value=selected.size.x;fields.sy.value=selected.size.y;fields.sz.value=selected.size.z;
@@ -371,7 +431,7 @@ Object.values(fields).forEach(el=>el.addEventListener("change",pullProps));
 fields.color.addEventListener("input",()=>{fields.colorText.value=fields.color.value;pullProps()});
 
 function projectData(){
- return {version:1,name:"Baseplate",parts:parts.map(({mesh,velocity,...p})=>p),script:document.querySelector("#code").value};
+ return {version:2,name:"Baseplate",parts:parts.filter(p=>p.sourceKind!=="external").map(({mesh,velocity,...p})=>p),script:document.querySelector("#code").value};
 }
 function loadProject(data){
  if(!data||!Array.isArray(data.parts))throw new Error("Projeto inválido");
@@ -394,9 +454,125 @@ const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2();
 renderer.domElement.addEventListener("pointerdown",e=>{
  if(playing||transform.dragging)return;
  const rect=renderer.domElement.getBoundingClientRect();mouse.x=((e.clientX-rect.left)/rect.width)*2-1;mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
- raycaster.setFromCamera(mouse,camera);const hits=raycaster.intersectObjects(parts.map(p=>p.mesh),false);
- if(hits.length)selectPart(hits[0].object.userData.partId);
+ raycaster.setFromCamera(mouse,camera);const hits=raycaster.intersectObjects(parts.map(p=>p.mesh),true);
+ if(hits.length){let o=hits[0].object,id=o.userData.partId;while(!id&&o.parent){o=o.parent;id=o.userData.partId}if(id)selectPart(id);}
 });
+
+
+function directProp(item,name){
+  const props=Array.from(item.children).find(n=>n.tagName==="Properties");if(!props)return null;
+  return Array.from(props.children).find(n=>n.getAttribute("name")===name)||null;
+}
+function textProp(item,name,def=""){const n=directProp(item,name);return n?(n.textContent||"").trim():def}
+function boolProp(item,name,def=false){const v=textProp(item,name,String(def)).toLowerCase();return v==="true"}
+function numProp(item,name,def=0){const v=Number(textProp(item,name,String(def)));return Number.isFinite(v)?v:def}
+function vecProp(item,name,def={x:0,y:0,z:0}){
+  const n=directProp(item,name);if(!n)return {...def};
+  const get=k=>Number(n.querySelector(k)?.textContent)||0;return {x:get("X"),y:get("Y"),z:get("Z")};
+}
+function cframeProp(item){
+  const n=directProp(item,"CFrame");if(!n)return {position:{x:0,y:0,z:0},rotation:{x:0,y:0,z:0}};
+  const get=k=>Number(n.querySelector(k)?.textContent)||0;
+  const position={x:get("X"),y:get("Y"),z:get("Z")};
+  const vals=["R00","R01","R02","R10","R11","R12","R20","R21","R22"].map(get);
+  const m=new THREE.Matrix4().set(vals[0],vals[1],vals[2],0, vals[3],vals[4],vals[5],0, vals[6],vals[7],vals[8],0, 0,0,0,1);
+  const e=new THREE.Euler().setFromRotationMatrix(m,"XYZ");
+  return {position,rotation:{x:THREE.MathUtils.radToDeg(e.x),y:THREE.MathUtils.radToDeg(e.y),z:THREE.MathUtils.radToDeg(e.z)}};
+}
+function robloxColor(item){
+  const c=directProp(item,"Color");
+  if(c){const val=k=>Math.max(0,Math.min(1,Number(c.querySelector(k)?.textContent)||0));return "#"+[val("R"),val("G"),val("B")].map(v=>Math.round(v*255).toString(16).padStart(2,"0")).join("")}
+  const c8=directProp(item,"Color3uint8");
+  if(c8){const n=Number(c8.textContent)>>>0;const r=(n>>>24)&255,g=(n>>>16)&255,b=(n>>>8)&255;if(r||g||b)return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("")}
+  const brick=numProp(item,"BrickColor",194);
+  const map={1:"#f2f3f3",21:"#c4281c",23:"#0d69ac",24:"#f5cd30",26:"#1b2a35",28:"#287f47",37:"#4b974b",102:"#6e99ca",194:"#a3a2a5",199:"#635f62",208:"#e8bac8",217:"#7c5c46",226:"#fdea8d"};
+  return map[brick]||"#a3a3a3";
+}
+function materialName(item){
+  const v=numProp(item,"Material",256);
+  const map={256:"Plastic",272:"SmoothPlastic",288:"Neon",512:"Wood",528:"Wood",784:"Concrete",800:"Concrete",816:"Concrete",848:"Concrete",1088:"Metal"};
+  return map[v]||"Plastic";
+}
+function contentId(item,name){
+  const n=directProp(item,name);if(!n)return "";
+  const url=n.querySelector("url")?.textContent||n.textContent||"";return String(url).trim();
+}
+function shapeName(item,cls){
+  if(cls==="WedgePart")return "Wedge";
+  const v=numProp(item,"Shape",1);return v===0?"Ball":v===2?"Cylinder":"Block";
+}
+function importRobloxXml(xmlText,label){
+  const doc=new DOMParser().parseFromString(xmlText,"application/xml");
+  if(doc.querySelector("parsererror"))throw new Error("Arquivo Roblox XML inválido.");
+  const root=doc.querySelector("roblox")||doc.documentElement;
+  let count=0,models=0;
+  const walk=(node,modelName="")=>{
+    for(const item of Array.from(node.children||[]).filter(n=>n.tagName==="Item")){
+      const cls=item.getAttribute("class")||"";
+      const name=textProp(item,"Name",cls||"Item");
+      let nextModel=modelName;
+      if(cls==="Model"){nextModel=name;models++}
+      if(["Part","WedgePart","TrussPart","SpawnLocation","MeshPart","UnionOperation"].includes(cls)){
+        if(count>=1500)continue;
+        const cf=cframeProp(item),size=vecProp(item,"Size",{x:4,y:1,z:2});
+        const shape=shapeName(item,cls);
+        newPart({name,className:cls,model:modelName,shape,position:cf.position,rotation:cf.rotation,size,
+          color:robloxColor(item),material:materialName(item),transparency:numProp(item,"Transparency",0),
+          anchored:boolProp(item,"Anchored",false),canCollide:boolProp(item,"CanCollide",true),
+          meshId:contentId(item,"MeshId"),textureId:contentId(item,"TextureID")||contentId(item,"TextureId")});
+        count++;
+      }
+      walk(item,nextModel);
+    }
+  };
+  walk(root,"");
+  toast(count+" peças Roblox importadas");log("Importado "+label+": "+count+" BaseParts em "+models+" Models.");
+  if(count>=1500)log("Limite de 1500 peças aplicado para proteger o navegador.","warn");
+  setStatus("Roblox model imported");
+}
+async function importMeshFile(file){
+  const ext=file.name.split(".").pop().toLowerCase();let obj;
+  if(ext==="obj"){obj=new OBJLoader().parse(await file.text())}
+  else if(ext==="fbx"){obj=new FBXLoader().parse(await file.arrayBuffer(),"")}
+  else if(ext==="glb"||ext==="gltf"){
+    const loader=new GLTFLoader();const data=ext==="glb"?await file.arrayBuffer():await file.text();
+    const gltf=await new Promise((res,rej)=>loader.parse(data,"",res,rej));obj=gltf.scene;
+  } else throw new Error("Formato de mesh não suportado.");
+  newExternalModel(obj,{name:file.name.replace(/\.[^.]+$/,"")});toast("Mesh 3D importado");
+}
+function xmlEscape(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]))}
+function materialToken(name){return ({Plastic:256,SmoothPlastic:272,Neon:288,Wood:512,Concrete:784,Metal:1088})[name]||256}
+function exportRbxmx(){
+  const models=new Map();for(const p of parts.filter(p=>p.sourceKind!=="external")){const k=p.model||"KaiseExport";if(!models.has(k))models.set(k,[]);models.get(k).push(p)}
+  let body="";
+  for(const [modelName,ps] of models){
+    body+='<Item class="Model"><Properties><string name="Name">'+xmlEscape(modelName)+'</string></Properties>';
+    for(const p of ps){
+      const cls=["Part","WedgePart","SpawnLocation","TrussPart"].includes(p.className)?p.className:"Part";
+      const e=new THREE.Euler(THREE.MathUtils.degToRad(p.rotation.x),THREE.MathUtils.degToRad(p.rotation.y),THREE.MathUtils.degToRad(p.rotation.z),"XYZ");
+      const m=new THREE.Matrix4().makeRotationFromEuler(e).elements;
+      const c=new THREE.Color(p.color);
+      body+='<Item class="'+cls+'"><Properties>'+
+        '<string name="Name">'+xmlEscape(p.name)+'</string>'+
+        '<CoordinateFrame name="CFrame"><X>'+p.position.x+'</X><Y>'+p.position.y+'</Y><Z>'+p.position.z+'</Z>'+
+        '<R00>'+m[0]+'</R00><R01>'+m[4]+'</R01><R02>'+m[8]+'</R02><R10>'+m[1]+'</R10><R11>'+m[5]+'</R11><R12>'+m[9]+'</R12><R20>'+m[2]+'</R20><R21>'+m[6]+'</R21><R22>'+m[10]+'</R22></CoordinateFrame>'+
+        '<Vector3 name="Size"><X>'+p.size.x+'</X><Y>'+p.size.y+'</Y><Z>'+p.size.z+'</Z></Vector3>'+
+        '<Color3 name="Color"><R>'+c.r+'</R><G>'+c.g+'</G><B>'+c.b+'</B></Color3>'+
+        '<float name="Transparency">'+p.transparency+'</float><bool name="Anchored">'+p.anchored+'</bool><bool name="CanCollide">'+p.canCollide+'</bool>'+
+        '<token name="Material">'+materialToken(p.material)+'</token></Properties></Item>';
+    }
+    body+='</Item>';
+  }
+  const xml='<?xml version="1.0" encoding="utf-8"?><roblox version="4">'+body+'</roblox>';
+  const blob=new Blob([xml],{type:"application/xml"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="KaiseStudioExport.rbxmx";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast("RBXMX exportado");log("Projeto exportado em .rbxmx para abrir no Roblox Studio.");
+}
+
+document.querySelector("#robloxImportBtn").addEventListener("click",()=>document.querySelector("#robloxFile").click());
+document.querySelector("#robloxFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{importRobloxXml(await f.text(),f.name)}catch(err){log(err.message,"error");toast("Falha ao importar Roblox")}e.target.value=""});
+document.querySelector("#meshImportBtn").addEventListener("click",()=>document.querySelector("#meshFile").click());
+document.querySelector("#meshFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{await importMeshFile(f)}catch(err){log(err.message,"error");toast("Falha ao importar mesh")}e.target.value=""});
+document.querySelector("#exportRbxmx").addEventListener("click",exportRbxmx);
 
 document.querySelector("#addPart").addEventListener("click",()=>!playing&&newPart());
 document.querySelector("#explorerAdd").addEventListener("click",()=>!playing&&newPart());
@@ -489,6 +665,9 @@ selectPart(parts[parts.length-1]?.id);
 window.addEventListener("keydown",e=>{
  if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
  if(e.key==="Delete")deleteSelected();
+ if(e.key.toLowerCase()==="w"&&!playing)transform.setMode("translate");
+ if(e.key.toLowerCase()==="e"&&!playing)transform.setMode("rotate");
+ if(e.key.toLowerCase()==="r"&&!playing)transform.setMode("scale");
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();saveLocal()}
 });
 </script>
