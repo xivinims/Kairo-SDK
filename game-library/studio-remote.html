@@ -224,6 +224,7 @@ import { OrbitControls } from "/vendor/three/addons/controls/OrbitControls.js";
 import { TransformControls } from "/vendor/three/addons/controls/TransformControls.js";
 import { GLTFLoader } from "/vendor/three/addons/loaders/GLTFLoader.js";
 import { OBJLoader } from "/vendor/three/addons/loaders/OBJLoader.js";
+import { istRobloxMesh, leseRobloxMesh } from "/vendor/roblox/rbxmesh.js";
 const app=document.querySelector("#app");
 const host=document.querySelector("#three");
 const out=document.querySelector("#output");
@@ -330,6 +331,10 @@ function newPart(data={}){
     color:data.color||"#a3a3a3",material:data.material||"Plastic",
     transparency:Number(data.transparency||0),anchored:data.anchored??true,canCollide:data.canCollide??true,
     meshId:data.meshId||"",textureId:data.textureId||"",sourceKind:data.sourceKind||"part",
+    initialSize:data.initialSize?{...data.initialSize}:null,
+    meshScale:data.meshScale?{...data.meshScale}:null,
+    meshOffset:data.meshOffset?{...data.meshOffset}:null,
+    specialMesh:!!data.specialMesh,realMesh:!!data.realMesh,
     velocity:{x:0,y:0,z:0}
   };
   const mesh=new THREE.Mesh(geometryForPart(p),makeMaterial(p));
@@ -358,14 +363,33 @@ function newExternalModel(object,data={}){
 function applyToMesh(p){
   const m=p.mesh;if(!m)return;
   m.position.set(p.position.x,p.position.y,p.position.z);
-  if(p.sourceKind!=="external") m.scale.set(Math.max(.1,p.size.x),Math.max(.1,p.size.y),Math.max(.1,p.size.z));
+  if(p.sourceKind!=="external"){
+    if(p.realMesh){
+      if(p.specialMesh){
+        m.scale.set(1,1,1);
+      }else{
+        const o=p.initialSize||p.size;
+        const sx=o.x?Math.max(.0001,p.size.x/o.x):1;
+        const sy=o.y?Math.max(.0001,p.size.y/o.y):1;
+        const sz=o.z?Math.max(.0001,p.size.z/o.z):1;
+        m.scale.set(sx,sy,sz);
+      }
+    }else{
+      m.scale.set(Math.max(.1,p.size.x),Math.max(.1,p.size.y),Math.max(.1,p.size.z));
+    }
+  }
   m.rotation.set(THREE.MathUtils.degToRad(p.rotation.x),THREE.MathUtils.degToRad(p.rotation.y),THREE.MathUtils.degToRad(p.rotation.z));
-  if(p.sourceKind!=="external"){const next=makeMaterial(p);if(m.material!==next)m.material=next}
+  if(p.sourceKind!=="external"){const next=makeMaterial(p);if(!p.realMesh&&m.material!==next)m.material=next}
 }
 function syncSelectedFromMesh(){
   if(!selected)return;const m=selected.mesh;
   selected.position={x:+m.position.x.toFixed(3),y:+m.position.y.toFixed(3),z:+m.position.z.toFixed(3)};
-  selected.size={x:+m.scale.x.toFixed(3),y:+m.scale.y.toFixed(3),z:+m.scale.z.toFixed(3)};
+  if(selected.realMesh&&!selected.specialMesh){
+    const o=selected.initialSize||selected.size;
+    selected.size={x:+(m.scale.x*o.x).toFixed(3),y:+(m.scale.y*o.y).toFixed(3),z:+(m.scale.z*o.z).toFixed(3)};
+  }else{
+    selected.size={x:+m.scale.x.toFixed(3),y:+m.scale.y.toFixed(3),z:+m.scale.z.toFixed(3)};
+  }
   selected.rotation={x:+THREE.MathUtils.radToDeg(m.rotation.x).toFixed(1),y:+THREE.MathUtils.radToDeg(m.rotation.y).toFixed(1),z:+THREE.MathUtils.radToDeg(m.rotation.z).toFixed(1)};
 }
 function selectPart(id){
@@ -538,6 +562,109 @@ function focusImported(list){
   const d=Math.max(size.x,size.y,size.z,20);orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(d*.9,d*.65,d*.9));
   camera.near=Math.max(.1,d/10000);camera.far=Math.max(2000,d*12);camera.updateProjectionMatrix();orbit.update();
 }
+
+const robloxMeshCache=new Map();
+const robloxTextureCache=new Map();
+
+function robloxAssetId(value){
+  if(!value)return null;
+  const v=xmlDecode(String(value)).trim();
+  let m=/^rbxassetid:\/\/(\d+)/i.exec(v);
+  if(m)return m[1];
+  m=/[?&]id=(\d+)/i.exec(v);
+  if(m)return m[1];
+  m=/^(\d+)$/.exec(v);
+  return m?m[1]:null;
+}
+
+async function gunzipIfNeeded(buf){
+  const u=new Uint8Array(buf);
+  if(u.length<2||u[0]!==0x1f||u[1]!==0x8b||typeof DecompressionStream==="undefined")return buf;
+  const ds=new DecompressionStream("gzip");
+  return await new Response(new Blob([buf]).stream().pipeThrough(ds)).arrayBuffer();
+}
+
+async function fetchRobloxAssetBytes(id){
+  const r=await fetch("/rbxasset?id="+encodeURIComponent(id),{cache:"force-cache"});
+  if(!r.ok)throw new Error("asset "+id+" HTTP "+r.status);
+  return await gunzipIfNeeded(await r.arrayBuffer());
+}
+
+function loadRobloxMesh(id){
+  if(!robloxMeshCache.has(id)){
+    robloxMeshCache.set(id,(async()=>{
+      const buf=await fetchRobloxAssetBytes(id);
+      if(!istRobloxMesh(buf))throw new Error("asset "+id+" não é mesh Roblox");
+      return await leseRobloxMesh(buf);
+    })());
+  }
+  return robloxMeshCache.get(id);
+}
+
+function loadRobloxTexture(id){
+  if(!id)return Promise.resolve(null);
+  if(!robloxTextureCache.has(id)){
+    robloxTextureCache.set(id,(async()=>{
+      const buf=await fetchRobloxAssetBytes(id);
+      const url=URL.createObjectURL(new Blob([buf]));
+      const tex=await new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>{const t=new THREE.Texture(img);t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;resolve(t)};
+        img.onerror=()=>resolve(null);
+        img.src=url;
+      });
+      return tex;
+    })());
+  }
+  return robloxTextureCache.get(id);
+}
+
+function fitSpecialMeshGeometry(base,p){
+  const g=base.clone();
+  const sc=p.meshScale||{x:1,y:1,z:1};
+  g.scale(sc.x||1,sc.y||1,sc.z||1);
+  const off=p.meshOffset||{x:0,y:0,z:0};
+  if(off.x||off.y||off.z)g.translate(off.x,off.y,off.z);
+  g.computeBoundingBox();g.computeBoundingSphere();
+  return g;
+}
+
+async function resolveRobloxMeshes(list){
+  const jobs=list.filter(p=>robloxAssetId(p.meshId));
+  if(!jobs.length)return {ok:0,fail:0,total:0};
+  let cursor=0,done=0,ok=0,fail=0;
+  const workers=Math.min(4,jobs.length);
+  const run=async()=>{
+    while(true){
+      const i=cursor++;if(i>=jobs.length)return;
+      const p=jobs[i],id=robloxAssetId(p.meshId);
+      try{
+        const base=await loadRobloxMesh(id);
+        p.mesh.geometry=p.specialMesh?fitSpecialMeshGeometry(base,p):base;
+        p.realMesh=true;
+        applyToMesh(p);
+        const tid=robloxAssetId(p.textureId);
+        if(tid){
+          const tex=await loadRobloxTexture(tid);
+          if(tex){
+            const mat=p.mesh.material.clone();
+            mat.map=tex;mat.needsUpdate=true;p.mesh.material=mat;
+          }
+        }
+        ok++;
+      }catch(e){
+        fail++;console.warn("Mesh Roblox "+id+" falhou:",e);
+      }
+      done++;
+      if(done%10===0||done===jobs.length){
+        setStatus("Meshes Roblox reais: "+done+"/"+jobs.length+" • "+ok+" carregados");
+        await new Promise(r=>requestAnimationFrame(r));
+      }
+    }
+  };
+  await Promise.all(Array.from({length:workers},run));
+  return {ok,fail,total:jobs.length};
+}
 async function importRobloxFile(file){
   const ext=file.name.split(".").pop().toLowerCase();
   if(!["rbxmx","rbxlx"].includes(ext))throw new Error("Esse importador aceita .rbxmx ou .rbxlx.");
@@ -554,7 +681,8 @@ async function importRobloxFile(file){
       const p=newPart({__silent:true,name,className:ctx.cls,model:modelPath(stack.slice(0,-1)),shape:rawShape(raw,ctx.cls),
         position:cf.position,rotation:cf.rotation,size,color:rawColor(raw),material:rawMaterial(raw),
         transparency:rawNum(raw,"Transparency",0),anchored:rawBool(raw,"Anchored",false),canCollide:rawBool(raw,"CanCollide",true),
-        meshId:rawText(raw,"MeshId",""),textureId:rawText(raw,"TextureID",rawText(raw,"TextureId",""))});
+        meshId:rawText(raw,"MeshId",""),textureId:rawText(raw,"TextureID",rawText(raw,"TextureId","")),
+        initialSize:rawVec(raw,"InitialSize",size)});
       ctx.createdPart=p;imported++;return;
     }
     if(ctx.cls==="SpecialMesh"){
@@ -562,6 +690,9 @@ async function importRobloxFile(file){
       parent.createdPart.meshId=rawText(raw,"MeshId",parent.createdPart.meshId||"");
       parent.createdPart.textureId=rawText(raw,"TextureId",rawText(raw,"TextureID",parent.createdPart.textureId||""));
       parent.createdPart.shape="Mesh";
+      parent.createdPart.specialMesh=true;
+      parent.createdPart.meshScale=rawVec(raw,"Scale",{x:1,y:1,z:1});
+      parent.createdPart.meshOffset=rawVec(raw,"Offset",{x:0,y:0,z:0});
     }
   };
   while(true){
@@ -593,7 +724,11 @@ async function importRobloxFile(file){
   }
   const added=parts.slice(startIndex);renderTree();if(added.length)selectPart(added[added.length-1].id);focusImported(added);
   const limited=imported>=MAX_PARTS?" • limite de "+MAX_PARTS+" peças":"";
-  toast(imported+" peças Roblox importadas");log("Importado "+file.name+": "+imported+" BaseParts em "+models+" Models"+limited+".");
+  setStatus("Estrutura importada. Carregando MeshParts reais…");
+  const meshResult=await resolveRobloxMeshes(added);
+  toast(imported+" peças • "+meshResult.ok+" meshes reais");
+  log("Importado "+file.name+": "+imported+" BaseParts em "+models+" Models"+limited+". Meshes reais: "+meshResult.ok+"/"+meshResult.total+".");
+  if(meshResult.fail)log(meshResult.fail+" MeshIds não puderam ser carregados.","warn");
   setStatus("Roblox model imported");
 }
 async function importMeshFile(file){
