@@ -149,7 +149,7 @@ button{color:inherit}
       <div class="panelhead">3D Viewport <div class="spacer"></div><span id="selLabel" style="color:#8f99a5;font-weight:500">Workspace</span></div>
       <div class="viewport">
         <div id="three"></div>
-        <div id="toast" class="toast"></div>
+        <div id="toast" class="toast"></div><div id="bootDiag" class="toast show">Carregando motor 3D…</div>
         <div class="viewportHud"><span class="badge" id="modeBadge">EDIT MODE</span><span class="badge" id="fpsBadge">60 FPS</span></div>
         <div class="gizmoHelp">Stud grid • clique numa peça • W/E/R: Move/Rotate/Scale • roda do mouse: zoom</div>
       </div>
@@ -218,10 +218,18 @@ part.Anchored = false</textarea>
   </div>
 </div>
 
+<script>
+window.__kaiseBootWatchdog=setTimeout(function(){
+  if(!window.__KAISE_STUDIO_READY){
+    var d=document.getElementById("bootDiag");
+    if(d){d.textContent="O motor 3D não carregou. Atualize a página; se continuar, abra em Safari/Chrome.";d.classList.add("show");}
+  }
+},7000);
+</script>
 <script type="importmap">
 {"imports":{
-  "three":"https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js",
-  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/"
+  "three":"/vendor/three/three.module.js",
+  "three/addons/":"/vendor/three/addons/"
 }}
 </script>
 <script type="module">
@@ -232,7 +240,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 
-const app=document.querySelector("#app");
+window.__KAISE_STUDIO_READY=true;\nconst bootDiag=document.querySelector("#bootDiag");if(bootDiag){bootDiag.textContent="Motor 3D carregado ✓";setTimeout(()=>bootDiag.classList.remove("show"),1400)};\nconst app=document.querySelector("#app");
 const host=document.querySelector("#three");
 const out=document.querySelector("#output");
 const status=document.querySelector("#status");
