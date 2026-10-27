@@ -116,8 +116,9 @@ button{color:inherit}
     <div class="sep"></div>
     <button class="tool" id="addPart" type="button">＋ Part</button>
     <label class="fileTool" for="robloxFile">⬇ Roblox Model
-      <input class="fileToolInput" id="robloxFile" type="file">
+      <input class="fileToolInput" id="robloxFile" type="file" multiple>
     </label>
+    <button class="tool" id="robloxKeyBtn" type="button">🔑 Asset Key</button>
     <label class="fileTool" for="meshFile">⬇ Mesh 3D
       <input class="fileToolInput" id="meshFile" type="file" accept=".glb,.gltf,.obj">
     </label>
@@ -233,6 +234,8 @@ const modeBadge=document.querySelector("#modeBadge");
 const fpsBadge=document.querySelector("#fpsBadge");
 const selLabel=document.querySelector("#selLabel");
 const tree=document.querySelector("#tree");
+let robloxApiKey="";
+const robloxLocalAssetFiles=new Map();
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x8eb5dd);
@@ -584,7 +587,44 @@ async function gunzipIfNeeded(buf){
   return await new Response(new Blob([buf]).stream().pipeThrough(ds)).arrayBuffer();
 }
 
+
+function registerRobloxCompanionFiles(files){
+  robloxLocalAssetFiles.clear();
+  for(const file of files||[]){
+    const ext=file.name.split(".").pop().toLowerCase();
+    if(ext!=="mesh"&&ext!=="bin")continue;
+    const m=file.name.match(/(^|[^0-9])(\d{5,20})([^0-9]|$)/);
+    if(m)robloxLocalAssetFiles.set(m[2],file);
+  }
+}
+
+async function fetchRobloxAssetAuth(id){
+  if(!robloxApiKey)return null;
+  const r=await fetch("/rbxasset-auth/"+encodeURIComponent(id),{
+    cache:"no-store",
+    headers:{"x-api-key":robloxApiKey}
+  }).catch(()=>null);
+  if(!r||!r.ok)return null;
+  const ct=(r.headers.get("content-type")||"").toLowerCase();
+  if(ct.includes("json")){
+    try{
+      const j=await r.json();
+      const loc=j?.locations?.[0]?.location;
+      if(loc){
+        const rr=await fetch(loc,{cache:"force-cache"});
+        if(rr.ok)return await gunzipIfNeeded(await rr.arrayBuffer());
+      }
+    }catch{}
+    return null;
+  }
+  const ab=await r.arrayBuffer();
+  return ab.byteLength?await gunzipIfNeeded(ab):null;
+}
+
 async function fetchRobloxAssetBytes(id){
+  const local=robloxLocalAssetFiles.get(String(id));
+  if(local)return await gunzipIfNeeded(await local.arrayBuffer());
+
   const direct=await fetch("/rbxasset?id="+encodeURIComponent(id),{cache:"force-cache"}).catch(()=>null);
   if(direct&&direct.ok){
     const ct=(direct.headers.get("content-type")||"").toLowerCase();
@@ -603,14 +643,22 @@ async function fetchRobloxAssetBytes(id){
     }
   }
 
-  const meta=await fetch("/rbxassetv2/"+encodeURIComponent(id),{cache:"no-store"});
-  if(!meta.ok)throw new Error("asset "+id+" HTTP "+meta.status);
-  const j=await meta.json();
-  const loc=j?.locations?.[0]?.location;
-  if(!loc)throw new Error("asset "+id+" sem localização pública");
-  const rr=await fetch(loc,{cache:"force-cache"});
-  if(!rr.ok)throw new Error("CDN asset "+id+" HTTP "+rr.status);
-  return await gunzipIfNeeded(await rr.arrayBuffer());
+  const meta=await fetch("/rbxassetv2/"+encodeURIComponent(id),{cache:"no-store"}).catch(()=>null);
+  if(meta&&meta.ok){
+    try{
+      const j=await meta.json();
+      const loc=j?.locations?.[0]?.location;
+      if(loc){
+        const rr=await fetch(loc,{cache:"force-cache"});
+        if(rr.ok)return await gunzipIfNeeded(await rr.arrayBuffer());
+      }
+    }catch{}
+  }
+
+  const authed=await fetchRobloxAssetAuth(id);
+  if(authed)return authed;
+
+  throw new Error("asset "+id+" restrito: use Asset Key de leitura ou selecione o arquivo .mesh junto");
 }
 
 function loadRobloxMesh(id){
@@ -791,7 +839,24 @@ function exportRbxmx(){
   toast("RBXMX exportado");log("Projeto exportado em .rbxmx para abrir no Roblox Studio.");
 }
 
-document.querySelector("#robloxFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{await importRobloxFile(f)}catch(err){log(err.message,"error");toast("Falha: "+err.message)}e.target.value=""});
+document.querySelector("#robloxKeyBtn").addEventListener("click",()=>{
+  const key=prompt("Cole uma API Key Open Cloud com SOMENTE leitura de Assets. Ela fica apenas nesta aba e não é salva.");
+  if(key&&key.trim()){
+    robloxApiKey=key.trim();
+    document.querySelector("#robloxKeyBtn").textContent="🔑 Asset Key ✓";
+    toast("Asset Key carregada só nesta aba");
+  }
+});
+
+document.querySelector("#robloxFile").addEventListener("change",async e=>{
+  const files=[...(e.target.files||[])];
+  const model=files.find(f=>["rbxmx","rbxlx"].includes(f.name.split(".").pop().toLowerCase()));
+  if(!model){toast("Selecione um .rbxmx ou .rbxlx");e.target.value="";return}
+  registerRobloxCompanionFiles(files.filter(f=>f!==model));
+  try{await importRobloxFile(model)}
+  catch(err){log(err.message,"error");toast("Falha: "+err.message)}
+  e.target.value="";
+});
 document.querySelector("#meshFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{await importMeshFile(f)}catch(err){log(err.message,"error");toast("Falha ao importar mesh")}e.target.value=""});
 document.querySelector("#exportRbxmx").addEventListener("click",exportRbxmx);
 
