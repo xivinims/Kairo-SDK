@@ -34,6 +34,9 @@ button{color:inherit}
 .tool.primary:hover{background:var(--blue2)}
 .tool.danger{color:#ffb5ba}
 .tool[disabled]{opacity:.45;cursor:not-allowed}
+.fileTool{display:flex;align-items:center;gap:5px;border:1px solid #3a414b;background:#292e35;border-radius:7px;padding:6px 8px;font-size:11px;white-space:nowrap;cursor:pointer;position:relative}
+.fileTool:hover{background:#343a43}
+.fileToolInput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .workspace{min-height:0;display:grid;grid-template-columns:230px minmax(0,1fr) 270px;grid-template-rows:minmax(0,1fr) 190px;gap:1px;background:#0e1013}
 .panel{min-width:0;min-height:0;background:var(--panel);display:flex;flex-direction:column}
 .panelhead{height:32px;display:flex;align-items:center;gap:8px;padding:0 9px;background:#20242a;border-bottom:1px solid #343a43;font-size:11px;font-weight:700}
@@ -112,10 +115,12 @@ button{color:inherit}
     <button class="tab" type="button">Plugins</button>
     <div class="sep"></div>
     <button class="tool" id="addPart" type="button">＋ Part</button>
-    <button class="tool" id="robloxImportBtn" type="button">⬇ Roblox Model</button>
-    <input id="robloxFile" type="file" accept=".rbxmx,.rbxlx,application/xml,text/xml" hidden>
-    <button class="tool" id="meshImportBtn" type="button">⬇ Mesh 3D</button>
-    <input id="meshFile" type="file" accept=".glb,.gltf,.obj,.fbx" hidden>
+    <label class="fileTool" for="robloxFile">⬇ Roblox Model
+      <input class="fileToolInput" id="robloxFile" type="file" accept=".rbxmx,.rbxlx,application/xml,text/xml">
+    </label>
+    <label class="fileTool" for="meshFile">⬇ Mesh 3D
+      <input class="fileToolInput" id="meshFile" type="file" accept=".glb,.gltf,.obj,.fbx">
+    </label>
     <button class="tool" id="duplicate" type="button">⧉ Duplicate</button>
     <button class="tool danger" id="delete" type="button">⌫ Delete</button>
     <div class="sep"></div>
@@ -129,8 +134,9 @@ button{color:inherit}
     <button class="tool" id="save" type="button">Save</button>
     <button class="tool" id="export" type="button">Export JSON</button>
     <button class="tool" id="exportRbxmx" type="button">Export .rbxmx</button>
-    <button class="tool" id="importBtn" type="button">Import</button>
-    <input id="importFile" type="file" accept="application/json,.json" hidden>
+    <label class="fileTool" for="importFile">Import
+      <input class="fileToolInput" id="importFile" type="file" accept="application/json,.json">
+    </label>
   </div>
 
   <div class="workspace">
@@ -212,13 +218,19 @@ part.Anchored = false</textarea>
   </div>
 </div>
 
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/"
+}}
+</script>
 <script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js";
-import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/controls/OrbitControls.js";
-import { TransformControls } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/controls/TransformControls.js";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/loaders/GLTFLoader.js";
-import { OBJLoader } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/loaders/OBJLoader.js";
-import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.181.1/examples/jsm/loaders/FBXLoader.js";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TransformControls } from "three/addons/controls/TransformControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 
 const app=document.querySelector("#app");
 const host=document.querySelector("#three");
@@ -568,9 +580,7 @@ function exportRbxmx(){
   toast("RBXMX exportado");log("Projeto exportado em .rbxmx para abrir no Roblox Studio.");
 }
 
-document.querySelector("#robloxImportBtn").addEventListener("click",()=>document.querySelector("#robloxFile").click());
 document.querySelector("#robloxFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{importRobloxXml(await f.text(),f.name)}catch(err){log(err.message,"error");toast("Falha ao importar Roblox")}e.target.value=""});
-document.querySelector("#meshImportBtn").addEventListener("click",()=>document.querySelector("#meshFile").click());
 document.querySelector("#meshFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{await importMeshFile(f)}catch(err){log(err.message,"error");toast("Falha ao importar mesh")}e.target.value=""});
 document.querySelector("#exportRbxmx").addEventListener("click",exportRbxmx);
 
@@ -581,7 +591,6 @@ document.querySelector("#duplicate").addEventListener("click",duplicateSelected)
 document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{if(!playing){transform.setMode(b.dataset.mode);setStatus("Gizmo: "+b.dataset.mode)}}));
 document.querySelector("#save").addEventListener("click",saveLocal);
 document.querySelector("#export").addEventListener("click",downloadProject);
-document.querySelector("#importBtn").addEventListener("click",()=>document.querySelector("#importFile").click());
 document.querySelector("#importFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{loadProject(JSON.parse(await f.text()));log("Projeto importado.")}catch(err){log(err.message,"error")}e.target.value=""});
 document.querySelector("#clearOut").addEventListener("click",()=>out.textContent="");
 
@@ -657,6 +666,7 @@ function animate(now){
 }
 requestAnimationFrame(animate);
 
+log("UI de importação pronta. Roblox Model aceita .rbxmx/.rbxlx; Mesh 3D aceita .obj/.fbx/.glb/.gltf.");
 if(!restoreLocal()){
  newPart({name:"SpawnFloor",position:{x:0,y:.5,z:0},size:{x:12,y:1,z:12},color:"#6ebf67",anchored:true,material:"Grass"});
  newPart({name:"Part",position:{x:0,y:4,z:0},size:{x:4,y:2,z:4},color:"#a3a3a3",anchored:true});
