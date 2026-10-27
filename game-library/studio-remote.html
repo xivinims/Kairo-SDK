@@ -585,9 +585,32 @@ async function gunzipIfNeeded(buf){
 }
 
 async function fetchRobloxAssetBytes(id){
-  const r=await fetch("/rbxasset?id="+encodeURIComponent(id),{cache:"force-cache"});
-  if(!r.ok)throw new Error("asset "+id+" HTTP "+r.status);
-  return await gunzipIfNeeded(await r.arrayBuffer());
+  const direct=await fetch("/rbxasset?id="+encodeURIComponent(id),{cache:"force-cache"}).catch(()=>null);
+  if(direct&&direct.ok){
+    const ct=(direct.headers.get("content-type")||"").toLowerCase();
+    if(ct.includes("json")){
+      try{
+        const j=await direct.json();
+        const loc=j?.locations?.[0]?.location;
+        if(loc){
+          const rr=await fetch(loc,{cache:"force-cache"});
+          if(rr.ok)return await gunzipIfNeeded(await rr.arrayBuffer());
+        }
+      }catch{}
+    }else{
+      const ab=await direct.arrayBuffer();
+      if(ab.byteLength)return await gunzipIfNeeded(ab);
+    }
+  }
+
+  const meta=await fetch("/rbxassetv2/"+encodeURIComponent(id),{cache:"no-store"});
+  if(!meta.ok)throw new Error("asset "+id+" HTTP "+meta.status);
+  const j=await meta.json();
+  const loc=j?.locations?.[0]?.location;
+  if(!loc)throw new Error("asset "+id+" sem localização pública");
+  const rr=await fetch(loc,{cache:"force-cache"});
+  if(!rr.ok)throw new Error("CDN asset "+id+" HTTP "+rr.status);
+  return await gunzipIfNeeded(await rr.arrayBuffer());
 }
 
 function loadRobloxMesh(id){
