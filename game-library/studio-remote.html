@@ -119,7 +119,7 @@ button{color:inherit}
       <input class="fileToolInput" id="robloxFile" type="file" accept=".rbxmx,.rbxlx,application/xml,text/xml">
     </label>
     <label class="fileTool" for="meshFile">⬇ Mesh 3D
-      <input class="fileToolInput" id="meshFile" type="file" accept=".glb,.gltf,.obj,.fbx">
+      <input class="fileToolInput" id="meshFile" type="file" accept=".glb,.gltf,.obj">
     </label>
     <button class="tool" id="duplicate" type="button">⧉ Duplicate</button>
     <button class="tool danger" id="delete" type="button">⌫ Delete</button>
@@ -219,27 +219,26 @@ part.Anchored = false</textarea>
 </div>
 
 <script>
+window.KaisePreboot=true;
+document.addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("button,.fileTool");
+  if(!b)return;
+  var st=document.getElementById("status");
+  if(st&&!window.__KAISE_STUDIO_READY)st.textContent="Carregando motor 3D…";
+},true);
 window.__kaiseBootWatchdog=setTimeout(function(){
   if(!window.__KAISE_STUDIO_READY){
     var d=document.getElementById("bootDiag");
-    if(d){d.textContent="O motor 3D não carregou. Atualize a página; se continuar, abra em Safari/Chrome.";d.classList.add("show");}
+    if(d){d.textContent="O motor 3D não carregou. Recarregue esta página. Os botões de arquivo continuam disponíveis.";d.classList.add("show");}
   }
 },7000);
 </script>
-<script type="importmap">
-{"imports":{
-  "three":"/vendor/three/three.module.js",
-  "three/addons/":"/vendor/three/addons/"
-}}
-</script>
 <script type="module">
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { TransformControls } from "three/addons/controls/TransformControls.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
-import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
-
+import * as THREE from "/vendor/three/three.module.min.js";
+import { OrbitControls } from "/vendor/three/addons/controls/OrbitControls.js";
+import { TransformControls } from "/vendor/three/addons/controls/TransformControls.js";
+import { GLTFLoader } from "/vendor/three/addons/loaders/GLTFLoader.js";
+import { OBJLoader } from "/vendor/three/addons/loaders/OBJLoader.js";
 window.__KAISE_STUDIO_READY=true;\nconst bootDiag=document.querySelector("#bootDiag");if(bootDiag){bootDiag.textContent="Motor 3D carregado ✓";setTimeout(()=>bootDiag.classList.remove("show"),1400)};\nconst app=document.querySelector("#app");
 const host=document.querySelector("#three");
 const out=document.querySelector("#output");
@@ -553,7 +552,6 @@ function importRobloxXml(xmlText,label){
 async function importMeshFile(file){
   const ext=file.name.split(".").pop().toLowerCase();let obj;
   if(ext==="obj"){obj=new OBJLoader().parse(await file.text())}
-  else if(ext==="fbx"){obj=new FBXLoader().parse(await file.arrayBuffer(),"")}
   else if(ext==="glb"||ext==="gltf"){
     const loader=new GLTFLoader();const data=ext==="glb"?await file.arrayBuffer():await file.text();
     const gltf=await new Promise((res,rej)=>loader.parse(data,"",res,rej));obj=gltf.scene;
@@ -674,7 +672,7 @@ function animate(now){
 }
 requestAnimationFrame(animate);
 
-log("UI de importação pronta. Roblox Model aceita .rbxmx/.rbxlx; Mesh 3D aceita .obj/.fbx/.glb/.gltf.");
+log("UI de importação pronta. Roblox Model aceita .rbxmx/.rbxlx; Mesh 3D aceita .obj/.glb/.gltf.");
 if(!restoreLocal()){
  newPart({name:"SpawnFloor",position:{x:0,y:.5,z:0},size:{x:12,y:1,z:12},color:"#6ebf67",anchored:true,material:"Grass"});
  newPart({name:"Part",position:{x:0,y:4,z:0},size:{x:4,y:2,z:4},color:"#a3a3a3",anchored:true});
