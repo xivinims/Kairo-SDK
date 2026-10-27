@@ -116,7 +116,7 @@ button{color:inherit}
     <div class="sep"></div>
     <button class="tool" id="addPart" type="button">＋ Part</button>
     <label class="fileTool" for="robloxFile">⬇ Roblox Model
-      <input class="fileToolInput" id="robloxFile" type="file" accept=".rbxmx,.rbxlx,application/xml,text/xml">
+      <input class="fileToolInput" id="robloxFile" type="file">
     </label>
     <label class="fileTool" for="meshFile">⬇ Mesh 3D
       <input class="fileToolInput" id="meshFile" type="file" accept=".glb,.gltf,.obj">
@@ -299,7 +299,11 @@ function toast(msg){
   clearTimeout(toast._timer);toast._timer=setTimeout(()=>t.classList.remove("show"),2200);
 }
 function uid(){return "part_"+(idCounter++)}
+const materialCache=new Map();
+const geometryCache=new Map();
 function makeMaterial(p){
+  const key=[p.color||"#a3a3a3",Number(p.transparency||0).toFixed(3),p.material||"Plastic"].join("|");
+  if(materialCache.has(key))return materialCache.get(key);
   const mat=new THREE.MeshStandardMaterial({
     color:new THREE.Color(p.color||"#a3a3a3"),
     transparent:(p.transparency||0)>0,
@@ -309,13 +313,7 @@ function makeMaterial(p){
     emissive:p.material==="Neon"?new THREE.Color(p.color||"#ffffff"):new THREE.Color(0x000000),
     emissiveIntensity:p.material==="Neon"?1.2:0
   });
-  return mat;
-}
-function geometryForPart(p){
-  if(p.className==="WedgePart") return new THREE.BufferGeometry().setFromPoints([]);
-  if(p.shape==="Ball") return new THREE.SphereGeometry(.5,24,16);
-  if(p.shape==="Cylinder") return new THREE.CylinderGeometry(.5,.5,1,24);
-  return new THREE.BoxGeometry(1,1,1);
+  materialCache.set(key,mat);return mat;
 }
 function makeWedgeGeometry(){
   const g=new THREE.BufferGeometry();
@@ -326,7 +324,18 @@ function makeWedgeGeometry(){
   const idx=[0,1,2,0,2,3, 3,2,5,3,5,4, 0,3,4, 0,4, 0, 1,5,2, 0,4,5,0,5,1];
   g.setAttribute("position",new THREE.BufferAttribute(v,3));g.setIndex(idx);g.computeVertexNormals();return g;
 }
+function geometryForPart(p){
+  const key=p.className==="WedgePart"?"Wedge":p.shape==="Ball"?"Ball":p.shape==="Cylinder"?"Cylinder":"Block";
+  if(geometryCache.has(key))return geometryCache.get(key);
+  let g;
+  if(key==="Wedge")g=makeWedgeGeometry();
+  else if(key==="Ball")g=new THREE.SphereGeometry(.5,16,12);
+  else if(key==="Cylinder")g=new THREE.CylinderGeometry(.5,.5,1,16);
+  else g=new THREE.BoxGeometry(1,1,1);
+  geometryCache.set(key,g);return g;
+}
 function newPart(data={}){
+  const silent=!!data.__silent;
   const p={
     id:data.id||uid(),name:data.name||"Part",className:data.className||"Part",
     model:data.model||"",shape:data.shape||"Block",
@@ -338,11 +347,10 @@ function newPart(data={}){
     meshId:data.meshId||"",textureId:data.textureId||"",sourceKind:data.sourceKind||"part",
     velocity:{x:0,y:0,z:0}
   };
-  let geo=p.className==="WedgePart"?makeWedgeGeometry():geometryForPart(p);
-  if(!geo.getAttribute("position")) geo=makeWedgeGeometry();
-  const mesh=new THREE.Mesh(geo,makeMaterial(p));
-  mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.partId=p.id;mesh.userData.pickRoot=true;scene.add(mesh);p.mesh=mesh;
-  applyToMesh(p);parts.push(p);selectPart(p.id);renderTree();setStatus(p.className+" added");
+  const mesh=new THREE.Mesh(geometryForPart(p),makeMaterial(p));
+  mesh.castShadow=parts.length<2500;mesh.receiveShadow=true;mesh.userData.partId=p.id;mesh.userData.pickRoot=true;scene.add(mesh);p.mesh=mesh;
+  applyToMesh(p);parts.push(p);
+  if(!silent){selectPart(p.id);renderTree();setStatus(p.className+" added")}
   return p;
 }
 function newExternalModel(object,data={}){
@@ -367,7 +375,7 @@ function applyToMesh(p){
   m.position.set(p.position.x,p.position.y,p.position.z);
   if(p.sourceKind!=="external") m.scale.set(Math.max(.1,p.size.x),Math.max(.1,p.size.y),Math.max(.1,p.size.z));
   m.rotation.set(THREE.MathUtils.degToRad(p.rotation.x),THREE.MathUtils.degToRad(p.rotation.y),THREE.MathUtils.degToRad(p.rotation.z));
-  if(p.sourceKind!=="external"&&m.material){m.material.dispose();m.material=makeMaterial(p)}
+  if(p.sourceKind!=="external"){const next=makeMaterial(p);if(m.material!==next)m.material=next}
 }
 function syncSelectedFromMesh(){
   if(!selected)return;const m=selected.mesh;
@@ -383,7 +391,7 @@ function selectPart(id){
 }
 function deleteSelected(){
   if(!selected||playing)return;
-  transform.detach();scene.remove(selected.mesh);selected.mesh.traverse?.(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose?.());else o.material?.dispose?.()});
+  transform.detach();scene.remove(selected.mesh);if(selected.sourceKind==="external")selected.mesh.traverse?.(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose?.());else o.material?.dispose?.()});
   parts=parts.filter(p=>p!==selected);selected=null;renderTree();renderProps();setStatus("Deleted");
 }
 function duplicateSelected(){
@@ -393,22 +401,25 @@ function duplicateSelected(){
 }
 function renderTree(){
   tree.innerHTML="";
-  const mk=(html,cls="",cb=null)=>{const d=document.createElement("div");d.className="tree-row "+cls;d.innerHTML=html;if(cb)d.addEventListener("click",cb);tree.appendChild(d);};
-  mk('<span class="dot folder"></span><b>Workspace</b>');
+  const TREE_LIMIT=1200;let shown=0;
+  const mk=(html,cls="",cb=null,count=true)=>{if(count&&shown>=TREE_LIMIT)return false;const d=document.createElement("div");d.className="tree-row "+cls;d.innerHTML=html;if(cb)d.addEventListener("click",cb);tree.appendChild(d);if(count)shown++;return true};
+  mk('<span class="dot folder"></span><b>Workspace</b>',"",null,false);
   mk('<span class="dot base"></span>Baseplate',"indent");
   const grouped=new Map();
   for(const p of parts){const key=p.model||"";if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(p)}
-  if(grouped.has("")) for(const p of grouped.get("")) mk('<span class="dot '+(p.className==="MeshPart"?"mesh":"")+'"></span>'+escapeHtml(p.name),"indent "+(selected?.id===p.id?"selected":""),()=>selectPart(p.id));
-  for(const [model,children] of grouped){
-    if(!model)continue;
-    mk('<span class="dot model"></span><span class="tree-model">'+escapeHtml(model)+'</span>',"indent");
-    for(const p of children) mk('<span class="dot '+(p.className==="MeshPart"?"mesh":"")+'"></span>'+escapeHtml(p.name),"indent "+(selected?.id===p.id?"selected":""),()=>selectPart(p.id));
+  const row=p=>mk('<span class="dot '+(p.className==="MeshPart"?"mesh":"")+'"></span>'+escapeHtml(p.name),"indent "+(selected?.id===p.id?"selected":""),()=>selectPart(p.id));
+  if(grouped.has(""))for(const p of grouped.get("")){if(!row(p))break}
+  if(shown<TREE_LIMIT)for(const [model,children] of grouped){
+    if(!model)continue;if(!mk('<span class="dot model"></span><span class="tree-model">'+escapeHtml(model)+'</span>',"indent"))break;
+    for(const p of children){if(!row(p))break}
+    if(shown>=TREE_LIMIT)break;
   }
-  mk('<span class="dot folder"></span>Players');
-  mk('<span class="dot folder"></span>Lighting');
-  mk('<span class="dot folder"></span>ReplicatedStorage');
-  mk('<span class="dot folder"></span>ServerScriptService');
-  mk('<span class="dot script"></span>Script.server.lua',"indent");
+  if(parts.length>shown)mk('<span class="dot folder"></span>… '+(parts.length-shown)+' peças ocultas para manter o celular fluido',"indent",null,false);
+  mk('<span class="dot folder"></span>Players',"",null,false);
+  mk('<span class="dot folder"></span>Lighting',"",null,false);
+  mk('<span class="dot folder"></span>ReplicatedStorage',"",null,false);
+  mk('<span class="dot folder"></span>ServerScriptService',"",null,false);
+  mk('<span class="dot script"></span>Script.server.lua',"indent",null,false);
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
@@ -454,8 +465,7 @@ function projectData(){
 }
 function loadProject(data){
  if(!data||!Array.isArray(data.parts))throw new Error("Projeto inválido");
- transform.detach();parts.forEach(p=>{scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose()});parts=[];selected=null;
- data.parts.forEach(p=>newPart(p));document.querySelector("#code").value=data.script||"";renderTree();renderProps();setStatus("Project loaded");
+ transform.detach();parts.forEach(p=>scene.remove(p.mesh));parts=[];selected=null;\n data.parts.forEach(p=>newPart({...p,__silent:true}));document.querySelector("#code").value=data.script||"";renderTree();if(parts.length)selectPart(parts[parts.length-1].id);else renderProps();setStatus("Project loaded");
 }
 function saveLocal(){
  localStorage.setItem("kaiseStudioProject",JSON.stringify(projectData()));setStatus("Saved locally");log("Projeto salvo no navegador.");
@@ -478,75 +488,119 @@ renderer.domElement.addEventListener("pointerdown",e=>{
 });
 
 
-function directProp(item,name){
-  const props=Array.from(item.children).find(n=>n.tagName==="Properties");if(!props)return null;
-  return Array.from(props.children).find(n=>n.getAttribute("name")===name)||null;
+const ROBLOX_BASEPARTS=new Set(["Part","WedgePart","CornerWedgePart","TrussPart","SpawnLocation","MeshPart","UnionOperation","NegateOperation"]);
+const ROBLOX_PROP_TARGETS=new Set([...ROBLOX_BASEPARTS,"Model","SpecialMesh"]);
+function rxEsc(v){return String(v).replace(/[.*+?^$\{\}()|[\]\\]/g,"\\$&")}
+function xmlDecode(v=""){
+  return String(v).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1")
+    .replace(/&#x([0-9a-f]+);/gi,(_,n)=>String.fromCodePoint(parseInt(n,16)))
+    .replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n)))
+    .replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
 }
-function textProp(item,name,def=""){const n=directProp(item,name);return n?(n.textContent||"").trim():def}
-function boolProp(item,name,def=false){const v=textProp(item,name,String(def)).toLowerCase();return v==="true"}
-function numProp(item,name,def=0){const v=Number(textProp(item,name,String(def)));return Number.isFinite(v)?v:def}
-function vecProp(item,name,def={x:0,y:0,z:0}){
-  const n=directProp(item,name);if(!n)return {...def};
-  const get=k=>Number(n.querySelector(k)?.textContent)||0;return {x:get("X"),y:get("Y"),z:get("Z")};
+function rawPropBlock(raw,name){
+  const re=new RegExp('<([A-Za-z0-9_:]+)\\b[^>]*\\bname\\s*=\\s*["\\\']'+rxEsc(name)+'["\\\'][^>]*>([\\s\\S]*?)<\\/\\1>','i');
+  return re.exec(raw);
 }
-function cframeProp(item){
-  const n=directProp(item,"CFrame");if(!n)return {position:{x:0,y:0,z:0},rotation:{x:0,y:0,z:0}};
-  const get=k=>Number(n.querySelector(k)?.textContent)||0;
-  const position={x:get("X"),y:get("Y"),z:get("Z")};
-  const vals=["R00","R01","R02","R10","R11","R12","R20","R21","R22"].map(get);
-  const m=new THREE.Matrix4().set(vals[0],vals[1],vals[2],0, vals[3],vals[4],vals[5],0, vals[6],vals[7],vals[8],0, 0,0,0,1);
-  const e=new THREE.Euler().setFromRotationMatrix(m,"XYZ");
+function rawText(raw,name,def=""){
+  const m=rawPropBlock(raw,name);if(!m)return def;let v=m[2];
+  const u=/<url\b[^>]*>([\s\S]*?)<\/url>/i.exec(v);if(u)v=u[1];
+  if(/<null\b/i.test(v))return "";
+  v=v.replace(/<[^>]+>/g,"");return xmlDecode(v).trim();
+}
+function rawNum(raw,name,def=0){const n=Number(rawText(raw,name,String(def)));return Number.isFinite(n)?n:def}
+function rawBool(raw,name,def=false){return rawText(raw,name,String(def)).toLowerCase()==="true"}
+function rawVec(raw,name,def={x:0,y:0,z:0}){
+  const m=rawPropBlock(raw,name);if(!m)return {...def};const body=m[2];
+  const n=k=>{const q=new RegExp('<'+k+'>\\s*([^<]+)\\s*<\\/'+k+'>','i').exec(body);const v=q?Number(q[1]):NaN;return Number.isFinite(v)?v:0};
+  return {x:n("X"),y:n("Y"),z:n("Z")};
+}
+function rawCFrame(raw){
+  const m=rawPropBlock(raw,"CFrame");if(!m)return {position:{x:0,y:0,z:0},rotation:{x:0,y:0,z:0}};const body=m[2];
+  const n=k=>{const q=new RegExp('<'+k+'>\\s*([^<]+)\\s*<\\/'+k+'>','i').exec(body);const v=q?Number(q[1]):NaN;return Number.isFinite(v)?v:0};
+  const position={x:n("X"),y:n("Y"),z:n("Z")};
+  const vals=["R00","R01","R02","R10","R11","R12","R20","R21","R22"].map(n);
+  const mat=new THREE.Matrix4().set(vals[0],vals[1],vals[2],0,vals[3],vals[4],vals[5],0,vals[6],vals[7],vals[8],0,0,0,0,1);
+  const e=new THREE.Euler().setFromRotationMatrix(mat,"XYZ");
   return {position,rotation:{x:THREE.MathUtils.radToDeg(e.x),y:THREE.MathUtils.radToDeg(e.y),z:THREE.MathUtils.radToDeg(e.z)}};
 }
-function robloxColor(item){
-  const c=directProp(item,"Color");
-  if(c){const val=k=>Math.max(0,Math.min(1,Number(c.querySelector(k)?.textContent)||0));return "#"+[val("R"),val("G"),val("B")].map(v=>Math.round(v*255).toString(16).padStart(2,"0")).join("")}
-  const c8=directProp(item,"Color3uint8");
-  if(c8){const n=Number(c8.textContent)>>>0;const r=(n>>>24)&255,g=(n>>>16)&255,b=(n>>>8)&255;if(r||g||b)return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("")}
-  const brick=numProp(item,"BrickColor",194);
+function rawColor(raw){
+  const c=rawPropBlock(raw,"Color");
+  if(c){const body=c[2],n=k=>{const q=new RegExp('<'+k+'>\\s*([^<]+)','i').exec(body);return Math.max(0,Math.min(1,Number(q?.[1])||0))};return "#"+[n("R"),n("G"),n("B")].map(v=>Math.round(v*255).toString(16).padStart(2,"0")).join("")}
+  const packed=rawText(raw,"Color3uint8","");
+  if(packed!==""){const n=Number(packed)>>>0;const r=(n>>>16)&255,g=(n>>>8)&255,b=n&255;return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join("")}
+  const brick=rawNum(raw,"BrickColor",194);
   const map={1:"#f2f3f3",21:"#c4281c",23:"#0d69ac",24:"#f5cd30",26:"#1b2a35",28:"#287f47",37:"#4b974b",102:"#6e99ca",194:"#a3a2a5",199:"#635f62",208:"#e8bac8",217:"#7c5c46",226:"#fdea8d"};
   return map[brick]||"#a3a3a3";
 }
-function materialName(item){
-  const v=numProp(item,"Material",256);
-  const map={256:"Plastic",272:"SmoothPlastic",288:"Neon",512:"Wood",528:"Wood",784:"Concrete",800:"Concrete",816:"Concrete",848:"Concrete",1088:"Metal"};
-  return map[v]||"Plastic";
+function rawMaterial(raw){
+  const v=rawNum(raw,"Material",256);
+  return ({256:"Plastic",272:"SmoothPlastic",288:"Neon",512:"Wood",528:"Wood",784:"Concrete",800:"Concrete",816:"Concrete",848:"Concrete",1088:"Metal"})[v]||"Plastic";
 }
-function contentId(item,name){
-  const n=directProp(item,name);if(!n)return "";
-  const url=n.querySelector("url")?.textContent||n.textContent||"";return String(url).trim();
+function rawShape(raw,cls){if(cls==="WedgePart"||cls==="CornerWedgePart")return "Wedge";const v=rawNum(raw,"Shape",1);return v===0?"Ball":v===2?"Cylinder":"Block"}
+function modelPath(stack){return stack.filter(x=>x.cls==="Model"&&x.modelName).map(x=>x.modelName).join(" / ")}
+function focusImported(list){
+  if(!list.length)return;const box=new THREE.Box3();
+  for(const p of list){if(p.mesh)box.expandByObject(p.mesh)}
+  if(box.isEmpty())return;const center=new THREE.Vector3(),size=new THREE.Vector3();box.getCenter(center);box.getSize(size);
+  const d=Math.max(size.x,size.y,size.z,20);orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(d*.9,d*.65,d*.9));
+  camera.near=Math.max(.1,d/10000);camera.far=Math.max(2000,d*12);camera.updateProjectionMatrix();orbit.update();
 }
-function shapeName(item,cls){
-  if(cls==="WedgePart")return "Wedge";
-  const v=numProp(item,"Shape",1);return v===0?"Ball":v===2?"Cylinder":"Block";
-}
-function importRobloxXml(xmlText,label){
-  const doc=new DOMParser().parseFromString(xmlText,"application/xml");
-  if(doc.querySelector("parsererror"))throw new Error("Arquivo Roblox XML inválido.");
-  const root=doc.querySelector("roblox")||doc.documentElement;
-  let count=0,models=0;
-  const walk=(node,modelName="")=>{
-    for(const item of Array.from(node.children||[]).filter(n=>n.tagName==="Item")){
-      const cls=item.getAttribute("class")||"";
-      const name=textProp(item,"Name",cls||"Item");
-      let nextModel=modelName;
-      if(cls==="Model"){nextModel=name;models++}
-      if(["Part","WedgePart","TrussPart","SpawnLocation","MeshPart","UnionOperation"].includes(cls)){
-        if(count>=1500)continue;
-        const cf=cframeProp(item),size=vecProp(item,"Size",{x:4,y:1,z:2});
-        const shape=shapeName(item,cls);
-        newPart({name,className:cls,model:modelName,shape,position:cf.position,rotation:cf.rotation,size,
-          color:robloxColor(item),material:materialName(item),transparency:numProp(item,"Transparency",0),
-          anchored:boolProp(item,"Anchored",false),canCollide:boolProp(item,"CanCollide",true),
-          meshId:contentId(item,"MeshId"),textureId:contentId(item,"TextureID")||contentId(item,"TextureId")});
-        count++;
-      }
-      walk(item,nextModel);
+async function importRobloxFile(file){
+  const ext=file.name.split(".").pop().toLowerCase();
+  if(!["rbxmx","rbxlx"].includes(ext))throw new Error("Esse importador aceita arquivos Roblox XML .rbxmx ou .rbxlx.");
+  const reader=file.stream().getReader(),decoder=new TextDecoder();
+  let buffer="",mode=null,stack=[],bytes=0,imported=0,models=0,lastUi=0;
+  const startIndex=parts.length,MAX_PARTS=10000;
+  const parseProps=(ctx,raw)=>{
+    const name=rawText(raw,"Name",ctx.cls||"Item");
+    if(ctx.cls==="Model"){ctx.modelName=name;models++;return}
+    if(ROBLOX_BASEPARTS.has(ctx.cls)){
+      if(imported>=MAX_PARTS)return;
+      const cf=rawCFrame(raw);
+      const size=rawVec(raw,"Size",rawVec(raw,"size",{x:4,y:1,z:2}));
+      const p=newPart({__silent:true,name,className:ctx.cls,model:modelPath(stack.slice(0,-1)),shape:rawShape(raw,ctx.cls),
+        position:cf.position,rotation:cf.rotation,size,color:rawColor(raw),material:rawMaterial(raw),
+        transparency:rawNum(raw,"Transparency",0),anchored:rawBool(raw,"Anchored",false),canCollide:rawBool(raw,"CanCollide",true),
+        meshId:rawText(raw,"MeshId",""),textureId:rawText(raw,"TextureID",rawText(raw,"TextureId",""))});
+      ctx.createdPart=p;imported++;return;
+    }
+    if(ctx.cls==="SpecialMesh"){
+      const parent=[...stack].reverse().find(x=>x!==ctx&&x.createdPart)?.createdPart;if(!parent)return;
+      parent.meshId=rawText(raw,"MeshId",parent.meshId||"");parent.textureId=rawText(raw,"TextureId",rawText(raw,"TextureID",parent.textureId||""));parent.shape="Mesh";
     }
   };
-  walk(root,"");
-  toast(count+" peças Roblox importadas");log("Importado "+label+": "+count+" BaseParts em "+models+" Models.");
-  if(count>=1500)log("Limite de 1500 peças aplicado para proteger o navegador.","warn");
+  while(true){
+    const {value,done}=await reader.read();
+    if(value){bytes+=value.byteLength;buffer+=decoder.decode(value,{stream:true})}
+    if(done)buffer+=decoder.decode();
+    let spins=0;
+    while(spins++<200000){
+      if(mode){
+        const end=buffer.indexOf("</Properties>");
+        if(end<0){
+          if(buffer.length>262144){if(mode.capture)mode.raw+=buffer.slice(0,-64);buffer=buffer.slice(-64)}
+          break;
+        }
+        if(mode.capture){mode.raw+=buffer.slice(0,end);parseProps(mode.ctx,mode.raw)}
+        buffer=buffer.slice(end+13);mode=null;continue;
+      }
+      const m=/<Item\b[^>]*>|<\/Item>|<Properties>/i.exec(buffer);
+      if(!m){if(buffer.length>1024)buffer=buffer.slice(-1024);break}
+      buffer=buffer.slice(m.index+m[0].length);const tag=m[0];
+      if(/^<Item\b/i.test(tag)){const cls=(/\bclass\s*=\s*["']([^"']+)["']/i.exec(tag)||[])[1]||"";stack.push({cls,modelName:"",createdPart:null})}
+      else if(/^<\/Item/i.test(tag)){stack.pop()}
+      else{const ctx=stack[stack.length-1];mode={capture:!!ctx&&ROBLOX_PROP_TARGETS.has(ctx.cls),ctx,raw:""}}
+    }
+    const now=performance.now();
+    if(now-lastUi>120||done){
+      const pct=Math.min(100,Math.round(bytes/Math.max(1,file.size)*100));setStatus("Importando "+file.name+": "+pct+"% • "+imported+" peças");lastUi=now;
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+    if(done)break;
+  }
+  const added=parts.slice(startIndex);renderTree();if(added.length)selectPart(added[added.length-1].id);focusImported(added);
+  const limited=imported>=MAX_PARTS?" • limite de "+MAX_PARTS+" peças":"";
+  toast(imported+" peças Roblox importadas");log("Importado "+file.name+": "+imported+" BaseParts em "+models+" Models"+limited+".");
   setStatus("Roblox model imported");
 }
 async function importMeshFile(file){
@@ -586,7 +640,7 @@ function exportRbxmx(){
   toast("RBXMX exportado");log("Projeto exportado em .rbxmx para abrir no Roblox Studio.");
 }
 
-document.querySelector("#robloxFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{importRobloxXml(await f.text(),f.name)}catch(err){log(err.message,"error");toast("Falha ao importar Roblox")}e.target.value=""});
+document.querySelector("#robloxFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{await importRobloxFile(f)}catch(err){log(err.message,"error");toast("Falha: "+err.message)}e.target.value=""});
 document.querySelector("#meshFile").addEventListener("change",async e=>{const f=e.target.files?.[0];if(!f)return;try{await importMeshFile(f)}catch(err){log(err.message,"error");toast("Falha ao importar mesh")}e.target.value=""});
 document.querySelector("#exportRbxmx").addEventListener("click",exportRbxmx);
 
